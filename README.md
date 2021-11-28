@@ -1,6 +1,8 @@
 # LED-Christmas-Tree
 Info &amp; documentation of LED Christmas Tree Kit, a WiFi enabled Christmas Tree Soldering Kit made up of 13x APA106-F5 digitally adressable LEDs.
 
+<img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/animation.gif" width="500">
+
 ## Feature overview
  - 13x adressable APA106-F5 LEDs
  - Pushbutton

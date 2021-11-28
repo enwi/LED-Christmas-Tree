@@ -20,13 +20,11 @@ Soldering/Putting the Christmas Tree PCB together is pretty simple, since there 
 6. Flip the ring over.
 <img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/large_ring_leds_flipped.JPG" width="300">
 
-7. Solder the LEDs.
-<img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/large_ring_leds_soldered.JPG" width="300">
-
-8. Break/Snip off legs.
+7. Solder the LEDs and break/snip off their legs.
 <img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/large_ring_leds_snipped.JPG" width="300">
 
 ## 2. Assemble upper ring
 Repeat the steps of `1. Assemble lower ring` with the upper/smaller branch and ring PCBs.
+
 <img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/rings_assembled.JPG" width="300">
 

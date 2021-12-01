@@ -88,10 +88,42 @@ void TreeLight::runEffect()
         break;
     }
     case Effect::gradientHorizontal: {
+        // Gradient between color and color2
+        uint16_t blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        if (blendVal >= 512)
+        {
+            // Full gradient complete, transition to next color
+            updateColor();
+            blendVal = 0;
+        }
+        uint8_t blendStart = max((int)blendVal - 256, 0);
+        uint8_t blendEnd = min((int)blendVal, 255);
+        CRGB cStart = blend(currentColor, color2, blendStart);
+        CRGB cEnd = blend(currentColor, color2, blendEnd);
+        leds(0, 7).fill_gradient_RGB(cStart, cEnd);
+        leds(8, 11).fill_gradient_RGB(cStart, cEnd);
+        leds[12] = leds[0];
         break;
     }
-    case Effect::gradientVertical:
+    case Effect::gradientVertical: {
+        // Gradient between color and color2
+        uint16_t blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        if (blendVal >= 512)
+        {
+            // Full gradient complete, transition to next color
+            updateColor();
+            blendVal = 0;
+        }
+        uint8_t blendStart = max((int)blendVal - 256, 0);
+        uint8_t blendEnd = min((int)blendVal, 255);
+        CRGB cStart = blend(currentColor, color2, blendStart);
+        CRGB cMiddle = blend(currentColor, color2, ((int)blendStart + blendEnd) / 2);
+        CRGB cEnd = blend(currentColor, color2, blendEnd);
+        leds(0, 7).fill_solid(cStart);
+        leds(8, 11).fill_solid(cMiddle);
+        leds[12] = cEnd;
         break;
+    }
     case Effect::rainbowHorizontal: {
         uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
         leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);

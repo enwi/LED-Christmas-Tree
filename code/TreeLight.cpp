@@ -20,12 +20,13 @@ void TreeLight::init()
 
 void TreeLight::nextEffect()
 {
-    if ((int)currentEffect + 1 >= (int)Effect::maxValue)
+    currentEffect = (Effect)((int)currentEffect + 1);
+    if (currentEffect == Effect::maxValue)
     {
         currentEffect = (Effect)0;
-        effectTime = 0;
-        colorChangeTime = 0;
     }
+    effectTime = 0;
+    colorChangeTime = 0;
 }
 
 void TreeLight::setEffect(Effect e)
@@ -53,9 +54,11 @@ void TreeLight::update()
 
 void TreeLight::runEffect()
 {
-    if (effectTime > 60000) {
+    if (effectTime > 60000)
+    {
         // 30 seconds at normal speed
         effectTime = 0;
+        colorChangeTime = 0;
         updateColor();
     }
     switch (currentEffect)
@@ -72,11 +75,14 @@ void TreeLight::runEffect()
             std::swap(color2, currentColor);
             colorChangeTime += 100;
         }
-        for (uint8_t i = 0; i < numLeds; ++i) {
-            if ((i & 1) == 0) {
+        for (uint8_t i = 0; i < numLeds; ++i)
+        {
+            if ((i & 1) == 0)
+            {
                 leds[i] = currentColor;
             }
-            else {
+            else
+            {
                 leds[i] = color2;
             }
         }

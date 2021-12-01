@@ -31,6 +31,15 @@ public:
     void nextEffect();
     void setEffect(Effect e);
     void update();
+    void setLED(const uint8_t led, const CRGB color)
+    {
+        if (led > leds.size())
+        {
+            return;
+        }
+        leds[led] = color;
+        FastLED.show();
+    }
 
 public:
     static constexpr uint8_t pin = D1;

@@ -34,11 +34,14 @@ void setup()
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
     buttonConfig->setEventHandler(handleButton);
+    buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureDoubleClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressClickBeforeDoubleClick);
-    buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
-    buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterDoubleClick);
+    buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
+    buttonConfig->setFeature(ButtonConfig::kFeatureRepeatPress);
+    buttonConfig->setRepeatPressDelay(2000);
+    buttonConfig->setRepeatPressInterval(1000);
     nextUpdate = millis();
 }
 
@@ -59,19 +62,35 @@ void loop()
     light.update();
 }
 
+uint8_t lastEventType = 0;
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
     switch (eventType)
     {
     case AceButton::kEventClicked:
-    case AceButton::kEventReleased:
         light.nextEffect();
         break;
     case AceButton::kEventDoubleClicked:
         // double click
+        // Serial.println("DoubleClick");
         break;
     case AceButton::kEventLongPressed:
-
+        light.setLED(12, CRGB::Red);
+        lastEventType = eventType;
+        break;
+    case AceButton::kEventRepeatPressed:
+        light.setLED(12, CRGB::Blue);
+        lastEventType = eventType;
+        break;
+    case AceButton::kEventReleased:
+        if (lastEventType == AceButton::kEventLongPressed)
+        {
+            // Serial.println("Released LongPressed");
+        }
+        else if (lastEventType == AceButton::kEventRepeatPressed)
+        {
+            // Serial.println("Released RepeatPressed");
+        }
         break;
     }
 }

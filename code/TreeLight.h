@@ -19,6 +19,7 @@ enum class Effect
     gradientVertical,
     rainbowHorizontal,
     rainbowVertical,
+    runningLight,
     maxValue // Not an effect, number of valid effects
 };
 
@@ -34,9 +35,11 @@ public:
 public:
     static constexpr uint8_t pin = D1;
     static constexpr uint8_t numLeds = 13;
+
 private:
     void runEffect();
     void updateColor();
+
 private:
     CRGBArray<numLeds> leds;
     unsigned long effectTime = 0;

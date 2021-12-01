@@ -7,6 +7,8 @@
 // Twinklefox
 // solid color
 // single color change
+// rainbow
+// running light
 
 void TreeLight::init()
 {
@@ -54,7 +56,7 @@ void TreeLight::update()
 
 void TreeLight::runEffect()
 {
-    const uint8_t rainbowDeltaHue = 10;
+    const uint8_t rainbowDeltaHue = 32;
     bool doColorUpdate = false;
     switch (currentEffect)
     {
@@ -93,14 +95,14 @@ void TreeLight::runEffect()
     case Effect::rainbowHorizontal: {
         uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
         leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
-        leds(8, 11).fill_rainbow(hue, rainbowDeltaHue*2);
+        leds(8, 11).fill_rainbow(hue, rainbowDeltaHue * 2);
         leds[12] = leds[0];
         break;
     }
     case Effect::rainbowVertical: {
         CRGB colors[3];
         uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
-        fill_rainbow(colors, 3, hue, rainbowDeltaHue * 2);
+        fill_rainbow(colors, 3, hue, rainbowDeltaHue);
         // Bottom
         leds(0, 7).fill_solid(colors[0]);
         // Middle
@@ -109,8 +111,30 @@ void TreeLight::runEffect()
         leds[12] = colors[2];
         break;
     }
+    case Effect::runningLight: {
+        const uint8_t lightCount = 4; // max number of lit leds
+        uint8_t nLights = (uint8_t)(effectTime >> 10); // effectTime / 1024 => about two leds per second
+        leds.fill_solid(CRGB::Black);
+        while (nLights > leds.size() + lightCount)
+        {
+            nLights -= leds.size() + lightCount;
+        }
+        if (nLights > 0)
+        {
+            uint8_t end = min(leds.size() - nLights + lightCount - 1, 12);
+            uint8_t start = max((int)leds.size() - nLights, 0);
+            leds(start, end).fill_solid(currentColor);
+        }
+        else
+        {
+            // Only change color when currently empty
+            doColorUpdate = true;
+        }
+        break;
     }
-    if (doColorUpdate && effectTime > 60000) {
+    }
+    if (doColorUpdate && effectTime > 60000)
+    {
         // 30 seconds at normal speed
         effectTime = 0;
         colorChangeTime = 0;

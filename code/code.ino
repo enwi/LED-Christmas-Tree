@@ -28,47 +28,50 @@ AceButton button(buttonPin);
 void handleButton(AceButton*, uint8_t eventType, uint8_t);
 TreeLight light;
 
-void setup() {
-  pinMode(buttonPin, INPUT);
-  ButtonConfig *buttonConfig = button.getButtonConfig();
-  buttonConfig->setEventHandler(handleButton);
-  buttonConfig->setFeature(ButtonConfig::kFeatureDoubleClick);
-  buttonConfig->setFeature(
-      ButtonConfig::kFeatureSuppressClickBeforeDoubleClick);
-  buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
-  buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
-  buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterDoubleClick);
-  nextUpdate = millis();
-  light.init();
+void setup()
+{
+    light.init();
+    pinMode(buttonPin, INPUT);
+    ButtonConfig* buttonConfig = button.getButtonConfig();
+    buttonConfig->setEventHandler(handleButton);
+    buttonConfig->setFeature(ButtonConfig::kFeatureDoubleClick);
+    buttonConfig->setFeature(ButtonConfig::kFeatureSuppressClickBeforeDoubleClick);
+    buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
+    buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterClick);
+    buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterDoubleClick);
+    nextUpdate = millis();
 }
 
-void loop() {
-  // 1. Check button state:
-  //    - Debounce
-  //    - Single click / double click detection
-  //    - Long hold detection
-  // 2. Process button update
-  // 3. Update LEDs (if necessary)
-  // 4. wait until next update / button poll
+void loop()
+{
+    // 1. Check button state:
+    //    - Debounce
+    //    - Single click / double click detection
+    //    - Long hold detection
+    // 2. Process button update
+    // 3. Update LEDs (if necessary)
+    // 4. wait until next update / button poll
 
-  // 1. & 2.
-  button.check();
+    // 1. & 2.
+    button.check();
 
-  // 3.
-  light.update();
+    // 3.
+    light.update();
 }
 
-void handleButton(AceButton *, uint8_t eventType, uint8_t) {
-  switch (eventType) {
-  case AceButton::kEventClicked:
-  case AceButton::kEventReleased:
-    light.nextEffect();
-    break;
-  case AceButton::kEventDoubleClicked:
-    // double click
-    break;
-  case AceButton::kEventLongPressed:
+void handleButton(AceButton*, uint8_t eventType, uint8_t)
+{
+    switch (eventType)
+    {
+    case AceButton::kEventClicked:
+    case AceButton::kEventReleased:
+        light.nextEffect();
+        break;
+    case AceButton::kEventDoubleClicked:
+        // double click
+        break;
+    case AceButton::kEventLongPressed:
 
-    break;
-  }
+        break;
+    }
 }

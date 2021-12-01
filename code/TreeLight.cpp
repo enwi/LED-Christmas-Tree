@@ -12,7 +12,7 @@
 
 void TreeLight::init()
 {
-    FastLED.addLeds<NEOPIXEL, pin>(leds, numLeds);
+    FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
     FastLED.setBrightness(64);
     FastLED.setCorrection(LEDColorCorrection::Typical8mmPixel);
     leds.fill_solid(CRGB::Black);

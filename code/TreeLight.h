@@ -17,6 +17,8 @@ enum class Effect
     twoColorChange,
     gradientHorizontal,
     gradientVertical,
+    rainbowHorizontal,
+    rainbowVertical,
     maxValue // Not an effect, number of valid effects
 };
 

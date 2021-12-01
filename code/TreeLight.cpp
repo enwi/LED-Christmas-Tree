@@ -21,7 +21,7 @@ void TreeLight::init()
 void TreeLight::nextEffect()
 {
     currentEffect = (Effect)((int)currentEffect + 1);
-    if (currentEffect == Effect::maxValue)
+    if (currentEffect >= Effect::maxValue)
     {
         currentEffect = (Effect)0;
     }
@@ -54,13 +54,8 @@ void TreeLight::update()
 
 void TreeLight::runEffect()
 {
-    if (effectTime > 60000)
-    {
-        // 30 seconds at normal speed
-        effectTime = 0;
-        colorChangeTime = 0;
-        updateColor();
-    }
+    const uint8_t rainbowDeltaHue = 10;
+    bool doColorUpdate = false;
     switch (currentEffect)
     {
     case Effect::off:
@@ -68,12 +63,13 @@ void TreeLight::runEffect()
         break;
     case Effect::solid:
         leds.fill_solid(currentColor);
+        doColorUpdate = true;
         break;
     case Effect::twoColorChange: {
-        if (effectTime - colorChangeTime > 100)
+        if (effectTime - colorChangeTime > 2000)
         {
             std::swap(color2, currentColor);
-            colorChangeTime += 100;
+            colorChangeTime += 2000;
         }
         for (uint8_t i = 0; i < numLeds; ++i)
         {
@@ -86,14 +82,39 @@ void TreeLight::runEffect()
                 leds[i] = color2;
             }
         }
+        doColorUpdate = true;
         break;
     }
     case Effect::gradientHorizontal: {
-
         break;
     }
     case Effect::gradientVertical:
         break;
+    case Effect::rainbowHorizontal: {
+        uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
+        leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
+        leds(8, 11).fill_rainbow(hue, rainbowDeltaHue*2);
+        leds[12] = leds[0];
+        break;
+    }
+    case Effect::rainbowVertical: {
+        CRGB colors[3];
+        uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
+        fill_rainbow(colors, 3, hue, rainbowDeltaHue * 2);
+        // Bottom
+        leds(0, 7).fill_solid(colors[0]);
+        // Middle
+        leds(8, 11).fill_solid(colors[1]);
+        // Top
+        leds[12] = colors[2];
+        break;
+    }
+    }
+    if (doColorUpdate && effectTime > 60000) {
+        // 30 seconds at normal speed
+        effectTime = 0;
+        colorChangeTime = 0;
+        updateColor();
     }
 }
 

@@ -10,6 +10,14 @@
 // - on/off
 // - speed (off,slow,normal,fast)
 
+// LED order:
+//       USB
+//        0
+//    7   8   1
+// 6   11 12 9   2
+//    5   10   3
+//        4
+
 enum class Effect
 {
     off,
@@ -51,6 +59,7 @@ public:
         leds[led] = color;
         FastLED.show();
     }
+    void resetEffect();
 
     void setLED(const uint8_t start, const uint8_t end, const CRGB color)
     {
@@ -63,7 +72,7 @@ public:
     }
 
 public:
-    static constexpr uint8_t pin = D1;
+    static constexpr uint8_t pin = 3;//D1;
     static constexpr uint8_t numLeds = 13;
 
 private:
@@ -72,9 +81,10 @@ private:
 
 private:
     CRGBArray<numLeds> leds;
+    CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;
     unsigned long lastUpdate = 0;
-    Effect currentEffect = Effect::off;
+    Effect currentEffect = Effect::runningLight;
     CRGB currentColor = CRGB(0, 0xA0, 0xFF);
     CRGB color2 = CRGB(0, 0x40, 0xFF);
     unsigned long colorChangeTime = 0;

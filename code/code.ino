@@ -1,4 +1,4 @@
-#define FASTLED_ALLOW_INTERRUPTS 0
+//#define FASTLED_ALLOW_INTERRUPTS 0
 #include <AceButton.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>
@@ -65,6 +65,12 @@ void loop()
     // 2. Process button update
     // 3. Update LEDs (if necessary)
     // 4. wait until next update / button poll
+
+    // click: change effect
+    // double: speed
+    // long 1s: brightness
+    // long 2s: color (palette)
+    // long 3s: WiFi
 
     // 1. & 2.
     button.check();

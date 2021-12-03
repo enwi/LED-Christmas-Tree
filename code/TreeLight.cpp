@@ -18,6 +18,7 @@ void TreeLight::init()
     leds.fill_solid(CRGB::Black);
     FastLED.show();
     lastUpdate = millis();
+    ledBackup.fill_solid(CRGB::Black);
 }
 
 void TreeLight::nextEffect()
@@ -27,17 +28,14 @@ void TreeLight::nextEffect()
     {
         currentEffect = (Effect)0;
     }
-    effectTime = 0;
-    colorChangeTime = 0;
+    resetEffect();
 }
 
 void TreeLight::setEffect(Effect e)
 {
     if (e != currentEffect && e < Effect::maxValue)
     {
-        currentEffect = e;
-        effectTime = 0;
-        colorChangeTime = 0;
+        resetEffect();
     }
 }
 
@@ -82,10 +80,22 @@ void TreeLight::update()
     FastLED.show();
 }
 
+void TreeLight::resetEffect()
+{
+    effectTime = 0;
+    colorChangeTime = 0;
+    // Save last effect colors
+    ledBackup = leds;
+}
+
 void TreeLight::runEffect()
 {
+    const unsigned int colorDuration = 60000;
+    const unsigned int startFadeIn = 2000;
     const uint8_t rainbowDeltaHue = 32;
     bool doColorUpdate = false;
+    bool doFadeIn = true;
+
     switch (currentEffect)
     {
     case Effect::off:
@@ -96,20 +106,35 @@ void TreeLight::runEffect()
         doColorUpdate = true;
         break;
     case Effect::twoColorChange: {
-        if (effectTime - colorChangeTime > 2000)
+        unsigned long dt = effectTime - colorChangeTime;
+        CRGB c1 = currentColor;
+        CRGB c2 = color2;
+        if (dt >= 2000)
         {
-            std::swap(color2, currentColor);
+            // swap
+            color2 = c1;
+            currentColor = c2;
             colorChangeTime += 2000;
+            c1 = currentColor;
+            c2 = color2;
+        }
+        else if (dt >= 2000 - 512)
+        {
+            // fade
+            fract8 fade = (dt - (2000 - 512)) >> 1;
+            fade = ease8InOutCubic(fade);
+            c1 = blend(currentColor, color2, fade);
+            c2 = blend(color2, currentColor, fade);
         }
         for (uint8_t i = 0; i < numLeds; ++i)
         {
             if ((i & 1) == 0)
             {
-                leds[i] = currentColor;
+                leds[i] = c1;
             }
             else
             {
-                leds[i] = color2;
+                leds[i] = c2;
             }
         }
         doColorUpdate = true;
@@ -117,11 +142,13 @@ void TreeLight::runEffect()
     }
     case Effect::gradientHorizontal: {
         // Gradient between color and color2
-        uint16_t blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
         if (blendVal >= 512)
         {
             // Full gradient complete, transition to next color
             updateColor();
+            resetEffect();
+            doFadeIn = false; // do not want to fade in here, still same effect
             blendVal = 0;
         }
         uint8_t blendStart = max((int)blendVal - 256, 0);
@@ -135,11 +162,13 @@ void TreeLight::runEffect()
     }
     case Effect::gradientVertical: {
         // Gradient between color and color2
-        uint16_t blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
         if (blendVal >= 512)
         {
             // Full gradient complete, transition to next color
             updateColor();
+            resetEffect();
+            doFadeIn = false; // do not want to fade here, still same effect
             blendVal = 0;
         }
         uint8_t blendStart = max((int)blendVal - 256, 0);
@@ -171,19 +200,49 @@ void TreeLight::runEffect()
         leds[12] = colors[2];
         break;
     }
-    case Effect::runningLight: {
+    case Effect::runningLight: { // TODO: Fade
         const uint8_t lightCount = 4; // max number of lit leds
-        uint8_t nLights = (uint8_t)(effectTime >> 10); // effectTime / 1024 => about two leds per second
+        uint8_t nLights
+            = (uint8_t)(effectTime - colorChangeTime >> 10); // effectTime / 1024 => about two leds per second
+        uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 1) & 0x1FF;
         leds.fill_solid(CRGB::Black);
-        while (nLights > leds.size() + lightCount)
+        if (nLights >= numLeds + lightCount + 1)
         {
-            nLights -= leds.size() + lightCount;
+            nLights = 0;
+            colorChangeTime += (unsigned long)(numLeds + lightCount + 1) << 10;
         }
         if (nLights > 0)
         {
-            uint8_t end = min(leds.size() - nLights + lightCount, 12);
-            uint8_t start = max((int)leds.size() - nLights, 0);
-            leds(start, end).fill_solid(currentColor);
+            int end = min((int)numLeds - nLights + lightCount, numLeds);
+            if (end != numLeds)
+            {
+                // Last led can fade out
+                // 256 <= fade < 512: fade out end
+                fract8 fadeOut = 255 - max((int)fade - 256, 0);
+                fadeOut = ease8InOutCubic(fadeOut);
+                CRGB cEnd = currentColor;
+                cEnd.nscale8_video(fadeOut);
+                leds[end] = cEnd;
+            }
+
+            int start = max((int)numLeds - nLights, -1);
+            if (start != -1)
+            {
+                // First led can fade in
+                // 0 <= fade < 256: fade in start
+                fract8 fadeIn = min(fade, 255);
+                fadeIn = ease8InOutCubic(fadeIn);
+                CRGB cStart = currentColor;
+                cStart.nscale8_video(fadeIn);
+                leds[start] = cStart;
+            }
+            ++start; // First led is out of bounds or taken care of
+
+            // Last led is out of bounds or taken care of
+            if (end != 0)
+            {
+                leds(start, end).fill_solid(currentColor);
+            }
         }
         else
         {
@@ -193,11 +252,17 @@ void TreeLight::runEffect()
         break;
     }
     }
-    if (doColorUpdate && effectTime > 60000)
+    if (doFadeIn && effectTime < startFadeIn)
+    {
+        // Scale 0 to startFadeIn
+        uint8_t fade = min((startFadeIn - effectTime) * 256 / startFadeIn, 255);
+        fade = ease8InOutCubic(fade);
+        leds.nblend(ledBackup, fade);
+    }
+    else if (doColorUpdate && effectTime > colorDuration)
     {
         // 30 seconds at normal speed
-        effectTime = 0;
-        colorChangeTime = 0;
+        resetEffect();
         updateColor();
     }
 }

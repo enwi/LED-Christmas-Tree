@@ -200,20 +200,20 @@ void TreeLight::runEffect()
         leds[12] = colors[2];
         break;
     }
-    case Effect::runningLight: { // TODO: Fade
+    case Effect::runningLight: {
         const uint8_t lightCount = 4; // max number of lit leds
         uint8_t nLights
-            = (uint8_t)(effectTime - colorChangeTime >> 10); // effectTime / 1024 => about two leds per second
-        uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 1) & 0x1FF;
+            = (uint8_t)(effectTime - colorChangeTime >> 9); // effectTime / 512 => about 4 leds per second
+        uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 0) & 0x1FF;
         leds.fill_solid(CRGB::Black);
-        if (nLights >= numLeds + lightCount + 1)
+        if (nLights >= numLeds + lightCount)
         {
             nLights = 0;
-            colorChangeTime += (unsigned long)(numLeds + lightCount + 1) << 10;
+            colorChangeTime += (unsigned long)(numLeds + lightCount) << 9;
         }
         if (nLights > 0)
         {
-            int end = min((int)numLeds - nLights + lightCount, (int)numLeds);
+            int end = min((int)numLeds - nLights + lightCount - 1, (int)numLeds);
             if (end != numLeds)
             {
                 // Last led can fade out
@@ -224,6 +224,8 @@ void TreeLight::runEffect()
                 cEnd.nscale8_video(fadeOut);
                 leds[end] = cEnd;
             }
+            // Last led is out of bounds or set above
+            --end;
 
             int start = max((int)numLeds - nLights, -1);
             if (start != -1)
@@ -236,10 +238,10 @@ void TreeLight::runEffect()
                 cStart.nscale8_video(fadeIn);
                 leds[start] = cStart;
             }
-            ++start; // First led is out of bounds or taken care of
+            // First led is out of bounds or set above
+            ++start;
 
-            // Last led is out of bounds or taken care of
-            if (end != 0)
+            if (end >= 0)
             {
                 leds(start, end).fill_solid(currentColor);
             }

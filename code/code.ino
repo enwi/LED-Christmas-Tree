@@ -1,10 +1,16 @@
 #define FASTLED_ALLOW_INTERRUPTS 0
 #include <AceButton.h>
+#include <ESPAsyncWebServer.h>
 #include <FastLED.h>
 
+#include "Constants.h"
+#include "Networking.h"
 #include "TreeLight.h"
 
 using namespace ace_button;
+
+AsyncWebServer server(80); /// Webserver for OTA
+boolean apMode = false; /// Has AP been enabled (true) or not
 
 constexpr uint8_t buttonPin = D2;
 constexpr uint8_t pixelPin = D1;
@@ -17,13 +23,6 @@ constexpr uint8_t pixelPin = D1;
 //    5   10   3
 //        4
 
-CRGB c1 = CRGB(0, 0xA0, 0xFF);
-CRGB c2 = CRGB(0, 0x40, 0xFF);
-
-unsigned long nextUpdate = 0;
-uint8_t effect = 0;
-uint8_t numEffects = 2;
-
 AceButton button(buttonPin);
 void handleButton(AceButton*, uint8_t eventType, uint8_t);
 TreeLight light;
@@ -31,6 +30,7 @@ TreeLight light;
 void setup()
 {
     light.init();
+
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
     buttonConfig->setEventHandler(handleButton);
@@ -38,11 +38,22 @@ void setup()
     buttonConfig->setFeature(ButtonConfig::kFeatureDoubleClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressClickBeforeDoubleClick);
     buttonConfig->setFeature(ButtonConfig::kFeatureSuppressAfterDoubleClick);
-    buttonConfig->setFeature(ButtonConfig::kFeatureLongPress);
     buttonConfig->setFeature(ButtonConfig::kFeatureRepeatPress);
-    buttonConfig->setRepeatPressDelay(2000);
+    buttonConfig->setRepeatPressDelay(1000);
     buttonConfig->setRepeatPressInterval(1000);
-    nextUpdate = millis();
+
+    uint8_t mac[6];
+    wifi_get_macaddr(STATION_IF, mac);
+    sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+    server.on(
+        "/ota", HTTP_POST, [](AsyncWebServerRequest* request) { request->send(200); }, Networking::handleOTAUpload);
+
+    server.on("/ota", HTTP_GET, [](AsyncWebServerRequest* request) {
+        AsyncWebServerResponse* response = request->beginResponse_P(200, "text/html", OTA_INDEX);
+        request->send(response);
+    });
+    server.begin();
 }
 
 void loop()
@@ -62,7 +73,7 @@ void loop()
     light.update();
 }
 
-uint8_t lastEventType = 0;
+uint8_t selectedMode = 0; /// Selected mode for long press (1 after 1s, 2 after 2s, 3 after 3s, 1 after 1s)
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
     switch (eventType)
@@ -71,26 +82,59 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         light.nextEffect();
         break;
     case AceButton::kEventDoubleClicked:
-        // double click
-        // Serial.println("DoubleClick");
-        break;
-    case AceButton::kEventLongPressed:
-        light.setLED(12, CRGB::Red);
-        lastEventType = eventType;
+        light.nextSpeed();
         break;
     case AceButton::kEventRepeatPressed:
-        light.setLED(12, CRGB::Blue);
-        lastEventType = eventType;
+        ++selectedMode;
+        if (selectedMode > 3)
+        {
+            selectedMode = 1;
+        }
+        switch (selectedMode)
+        {
+        case 1:
+            // TODO replace below code with 1st mode animation
+            light.setLED(12, CRGB::White);
+            delay(100);
+            break;
+        case 2:
+            // TODO replace below code with 2nd mode animation
+            light.setLED(8, 11, CRGB::White);
+            delay(100);
+            break;
+        case 3:
+            // TODO replace below code with 3rd mode animation
+            light.setLED(0, 7, CRGB::White);
+            delay(100);
+            break;
+        }
         break;
     case AceButton::kEventReleased:
-        if (lastEventType == AceButton::kEventLongPressed)
+        switch (selectedMode)
         {
-            // Serial.println("Released LongPressed");
+        case 1:
+            break;
+        case 2:
+            break;
+        case 3:
+            // Create AP for OTA
+            if (apMode)
+            {
+                WiFi.softAPdisconnect(true);
+            }
+            else
+            {
+                char ssid[33] = {};
+                sniprintf(ssid, sizeof(ssid), "%s %s", HOSTNAME, deviceMAC);
+                Networking::createAP(ssid);
+            }
+            apMode = !apMode;
+            break;
+
+        default:
+            break;
         }
-        else if (lastEventType == AceButton::kEventRepeatPressed)
-        {
-            // Serial.println("Released RepeatPressed");
-        }
+        selectedMode = 0;
         break;
     }
 }

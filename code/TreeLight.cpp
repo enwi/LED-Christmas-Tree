@@ -41,6 +41,34 @@ void TreeLight::setEffect(Effect e)
     }
 }
 
+void TreeLight::nextSpeed()
+{
+    switch (speed)
+    {
+    case (uint8_t)Speed::stopped:
+        speed = (uint8_t)Speed::slow;
+        break;
+    case (uint8_t)Speed::slow:
+        speed = (uint8_t)Speed::medium;
+        break;
+    case (uint8_t)Speed::medium:
+        speed = (uint8_t)Speed::fast;
+        break;
+    // case (uint8_t)Speed::fast:
+    default:
+        speed = (uint8_t)Speed::stopped;
+        break;
+    }
+}
+
+void TreeLight::setSpeed(Speed s)
+{
+    if ((uint8_t)s != speed && s < Speed::maxValue)
+    {
+        speed = (uint8_t)s;
+    }
+}
+
 void TreeLight::update()
 {
     unsigned long t = millis();
@@ -153,7 +181,7 @@ void TreeLight::runEffect()
         }
         if (nLights > 0)
         {
-            uint8_t end = min(leds.size() - nLights + lightCount - 1, 12);
+            uint8_t end = min(leds.size() - nLights + lightCount, 12);
             uint8_t start = max((int)leds.size() - nLights, 0);
             leds(start, end).fill_solid(currentColor);
         }

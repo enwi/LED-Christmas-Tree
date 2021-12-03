@@ -23,6 +23,15 @@ enum class Effect
     maxValue // Not an effect, number of valid effects
 };
 
+enum class Speed
+{
+    stopped = 0,
+    slow = 1,
+    medium = 2,
+    fast = 4,
+    maxValue // Not a speed
+};
+
 class TreeLight
 {
 public:
@@ -30,6 +39,8 @@ public:
 
     void nextEffect();
     void setEffect(Effect e);
+    void nextSpeed();
+    void setSpeed(Speed s);
     void update();
     void setLED(const uint8_t led, const CRGB color)
     {
@@ -38,6 +49,16 @@ public:
             return;
         }
         leds[led] = color;
+        FastLED.show();
+    }
+
+    void setLED(const uint8_t start, const uint8_t end, const CRGB color)
+    {
+        if (start > leds.size() || end > leds.size())
+        {
+            return;
+        }
+        leds(start, end) = color;
         FastLED.show();
     }
 

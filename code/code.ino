@@ -6,6 +6,7 @@
 #include "Constants.h"
 #include "Networking.h"
 #include "TreeLight.h"
+#include "Menu.h"
 
 using namespace ace_button;
 
@@ -14,21 +15,14 @@ boolean apMode = false; /// Has AP been enabled (true) or not
 
 constexpr uint8_t buttonPin = D2;
 
-// LED order:
-//       USB
-//        0
-//    7   8   1
-// 6   11 12 9   2
-//    5   10   3
-//        4
-
 AceButton button(buttonPin);
 void handleButton(AceButton*, uint8_t eventType, uint8_t);
 TreeLight light;
+Menu menu;
 
 void setup()
 {
-    light.init();
+    light.init(menu);
 
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
@@ -78,7 +72,6 @@ void loop()
     light.update();
 }
 
-uint8_t selectedMode = 0; /// Selected mode for long press (1 after 1s, 2 after 2s, 3 after 3s, 1 after 1s)
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
     switch (eventType)
@@ -90,32 +83,15 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         light.nextSpeed();
         break;
     case AceButton::kEventRepeatPressed:
-        ++selectedMode;
-        if (selectedMode > 3)
+        uint8_t selectedMode = menu.getLongPressMode();
+        if (++selectedMode > 3)
         {
             selectedMode = 1;
         }
-        switch (selectedMode)
-        {
-        case 1:
-            // TODO replace below code with 1st mode animation
-            light.setLED(12, CRGB::White);
-            delay(100);
-            break;
-        case 2:
-            // TODO replace below code with 2nd mode animation
-            light.setLED(8, 11, CRGB::White);
-            delay(100);
-            break;
-        case 3:
-            // TODO replace below code with 3rd mode animation
-            light.setLED(0, 7, CRGB::White);
-            delay(100);
-            break;
-        }
+        menu.setLongPressMode(selectedMode);
         break;
     case AceButton::kEventReleased:
-        switch (selectedMode)
+        switch (menu.getLongPressMode())
         {
         case 1:
             break;
@@ -139,7 +115,7 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         default:
             break;
         }
-        selectedMode = 0;
+        menu.setLongPressMode(0);
         break;
     }
 }

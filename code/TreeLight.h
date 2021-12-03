@@ -2,6 +2,7 @@
 #define TREE_EFFECT_H
 #include <Arduino.h>
 #include <FastLED.h>
+#include "Menu.h"
 
 // Config:
 // - brighness
@@ -43,7 +44,7 @@ enum class Speed
 class TreeLight
 {
 public:
-    void init();
+    void init(Menu& menu);
 
     void nextEffect();
     void setEffect(Effect e);
@@ -77,9 +78,11 @@ public:
 
 private:
     void runEffect();
+    void displayMenu();
     void updateColor();
 
 private:
+    Menu* menu;
     CRGBArray<numLeds> leds;
     CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;

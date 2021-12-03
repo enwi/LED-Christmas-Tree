@@ -10,8 +10,9 @@
 // rainbow
 // running light
 
-void TreeLight::init()
+void TreeLight::init(Menu& menu)
 {
+    this->menu = &menu;
     FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
     FastLED.setBrightness(64);
     FastLED.setCorrection(LEDColorCorrection::Typical8mmPixel);
@@ -74,10 +75,17 @@ void TreeLight::update()
     {
         return;
     }
-    effectTime += (t - lastUpdate) * speed;
-    lastUpdate = t;
-    runEffect();
+    if (menu->isActive())
+    {
+        displayMenu();
+    }
+    else
+    {
+        effectTime += (t - lastUpdate) * speed;
+        runEffect();
+    }
     FastLED.show();
+    lastUpdate = t;
 }
 
 void TreeLight::resetEffect()
@@ -267,6 +275,25 @@ void TreeLight::runEffect()
         resetEffect();
         updateColor();
     }
+}
+
+void TreeLight::displayMenu()
+{
+    leds.fill_solid(CRGB::Black);
+    CRGB color = CRGB::White;
+    switch (menu->getLongPressMode())
+    {
+    case 1:
+        leds[12] = color;
+        break;
+    case 2:
+        leds(8, 11) = color;
+        break;
+    case 3:
+        leds(0, 7) = color;
+        break;
+    }
+
 }
 
 void TreeLight::updateColor()

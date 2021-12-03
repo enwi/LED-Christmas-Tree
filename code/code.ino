@@ -13,7 +13,6 @@ AsyncWebServer server(80); /// Webserver for OTA
 boolean apMode = false; /// Has AP been enabled (true) or not
 
 constexpr uint8_t buttonPin = D2;
-constexpr uint8_t pixelPin = D1;
 
 // LED order:
 //       USB

@@ -213,7 +213,7 @@ void TreeLight::runEffect()
         }
         if (nLights > 0)
         {
-            int end = min((int)numLeds - nLights + lightCount, numLeds);
+            int end = min((int)numLeds - nLights + lightCount, (int)numLeds);
             if (end != numLeds)
             {
                 // Last led can fade out
@@ -230,7 +230,7 @@ void TreeLight::runEffect()
             {
                 // First led can fade in
                 // 0 <= fade < 256: fade in start
-                fract8 fadeIn = min(fade, 255);
+                fract8 fadeIn = min(fade, (uint16_t)255);
                 fadeIn = ease8InOutCubic(fadeIn);
                 CRGB cStart = currentColor;
                 cStart.nscale8_video(fadeIn);
@@ -255,7 +255,7 @@ void TreeLight::runEffect()
     if (doFadeIn && effectTime < startFadeIn)
     {
         // Scale 0 to startFadeIn
-        uint8_t fade = min((startFadeIn - effectTime) * 256 / startFadeIn, 255);
+        uint8_t fade = min((startFadeIn - effectTime) * 256 / startFadeIn, (unsigned long)255);
         fade = ease8InOutCubic(fade);
         leds.nblend(ledBackup, fade);
     }

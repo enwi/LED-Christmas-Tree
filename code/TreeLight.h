@@ -72,7 +72,7 @@ public:
     }
 
 public:
-    static constexpr uint8_t pin = 3;//D1;
+    static constexpr uint8_t pin = D1;
     static constexpr uint8_t numLeds = 13;
 
 private:

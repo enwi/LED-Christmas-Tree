@@ -88,5 +88,5 @@ Repeat the steps of `1. Assemble lower ring` with the upper/smaller branch and r
 9. Break/Snip off the legs of the LED.
 <img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/base_trunk_tip_snipped.JPG" width="300">
 
-10. Congratulations you finished building the Christmas Tree :christmas_tree:. Now plug in the ESP8266 to your PC, upload the software and enjoy :tada:
+10. Congratulations you finished building the Christmas Tree :christmas_tree:. Now plug in the ESP8266 to your PC, upload the software described in the [Software Guide](https://github.com/enwi/LED-Christmas-Tree/blob/main/software.md) and enjoy :tada:
 <img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/usb.JPG" width="300">

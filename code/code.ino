@@ -4,9 +4,10 @@
 #include <FastLED.h>
 
 #include "Constants.h"
+#include "Menu.h"
 #include "Networking.h"
 #include "TreeLight.h"
-#include "Menu.h"
+
 
 using namespace ace_button;
 
@@ -110,9 +111,6 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
                 Networking::createAP(ssid);
             }
             apMode = !apMode;
-            break;
-
-        default:
             break;
         }
         menu.setLongPressMode(0);

@@ -20,6 +20,11 @@ void TreeLight::init(Menu& menu)
     FastLED.show();
     lastUpdate = millis();
     ledBackup.fill_solid(CRGB::Black);
+    // Init random seed
+    randomSeed(ESP.getVcc() * analogRead(A0));
+    // Initialize random colors
+    updateColor();
+    updateColor();
 }
 
 void TreeLight::nextEffect()
@@ -210,8 +215,7 @@ void TreeLight::runEffect()
     }
     case Effect::runningLight: {
         const uint8_t lightCount = 4; // max number of lit leds
-        uint8_t nLights
-            = (uint8_t)(effectTime - colorChangeTime >> 9); // effectTime / 512 => about 4 leds per second
+        uint8_t nLights = (uint8_t)(effectTime - colorChangeTime >> 9); // effectTime / 512 => about 4 leds per second
         uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 0) & 0x1FF;
         leds.fill_solid(CRGB::Black);
         if (nLights >= numLeds + lightCount)
@@ -293,13 +297,54 @@ void TreeLight::displayMenu()
         leds(0, 7) = color;
         break;
     }
+}
 
+///@brief Generate a harmonic color to the given @ref color
+///
+/// Adapted from http://devmag.org.za/2012/07/29/how-to-choose-colours-procedurally-algorithms/
+///
+/// Analogous: Choose second and third ranges 0.
+/// Complementary: Choose the third range 0, and first offset angle 180.
+/// Split Complementary: Choose offset angles 180 +/- a small angle.
+/// The second and third ranges must be smaller than the difference between the two offset angles.
+/// Triad: Choose offset angles 120 and 240.
+///
+///@param color Color to generate harmonic color to
+///@param offsetAngle1 [0-255]
+///@param offsetAngle2 [0-255]
+///@param rangeAngle0 [0-255]
+///@param rangeAngle1 [0-255]
+///@param rangeAngle2 [0-255]
+///@param saturation Saturation of the generated color [0-255]
+///@param luminance Luminance of the generated color [0-255]
+///@return CRGB
+static CRGB GenerateHarmonicColor(const CHSV color, uint8_t offsetAngle1, uint8_t offsetAngle2, uint8_t rangeAngle0,
+    uint8_t rangeAngle1, uint8_t rangeAngle2, uint8_t saturation, uint8_t luminance)
+{
+    // const uint8_t referenceAngle = random(0, 256);
+    const uint8_t referenceAngle = color.h;
+    uint8_t randomAngle = random(1, 255) * (rangeAngle0 + rangeAngle1 + rangeAngle2);
+
+    if (randomAngle > rangeAngle0)
+    {
+        if (randomAngle < rangeAngle0 + rangeAngle1)
+        {
+            randomAngle += offsetAngle1;
+        }
+        else
+        {
+            randomAngle += offsetAngle2;
+        }
+    }
+
+    return CHSV(referenceAngle + randomAngle, saturation, luminance);
 }
 
 void TreeLight::updateColor()
 {
     currentColor = color2;
-    color2.red = random(0, 256);
-    color2.green = random(0, 256);
-    color2.blue = random(0, 256);
+    // color2.red = random(0, 256);
+    // color2.green = random(0, 256);
+    // color2.blue = random(0, 256);
+    color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
 }

@@ -15,6 +15,7 @@ using namespace ace_button;
 #include <ESPAsyncWebServer.h>
 
 #include "Networking.h"
+
 AsyncWebServer server(80); /// Webserver for OTA
 boolean apMode = false; /// Has AP been enabled (true) or not
 
@@ -33,6 +34,7 @@ void initWifi()
     });
     server.begin();
 }
+
 void toggleWifi()
 {
     // Create AP for OTA
@@ -61,7 +63,6 @@ constexpr uint8_t buttonPin = 2;
 #endif
 
 AceButton button(buttonPin);
-void handleButton(AceButton*, uint8_t eventType, uint8_t);
 TreeLight light;
 Menu menu;
 
@@ -80,6 +81,27 @@ void updateBrightness()
 void selectColor()
 {
     menu.setMenuState(Menu::MenuState::colorSelect);
+}
+
+void handleButton(AceButton*, uint8_t eventType, uint8_t)
+{
+    menu.handleButton(eventType);
+    if (menu.isActive())
+    {
+        // Only process buttons for menu
+        return;
+    }
+    switch (eventType)
+    {
+    case AceButton::kEventClicked:
+        light.nextEffect();
+        break;
+    case AceButton::kEventDoubleClicked:
+        light.nextSpeed();
+        break;
+    default:
+        break;
+    }
 }
 
 void setup()
@@ -125,25 +147,4 @@ void loop()
 
     // 3.
     light.update();
-}
-
-void handleButton(AceButton*, uint8_t eventType, uint8_t)
-{
-    menu.handleButton(eventType);
-    if (menu.isActive())
-    {
-        // Only process buttons for menu
-        return;
-    }
-    switch (eventType)
-    {
-    case AceButton::kEventClicked:
-        light.nextEffect();
-        break;
-    case AceButton::kEventDoubleClicked:
-        light.nextSpeed();
-        break;
-    default:
-        break;
-    }
 }

@@ -31,6 +31,7 @@ public:
     void setMainCallback(uint8_t selection, Callback* cb);
     void setBrightnessCallback(Callback* cb) { brightnessCallback = cb; }
 
+    void setSubSelection(uint8_t selection) { subSelection = selection; }
     uint8_t getSubSelection() const { return subSelection; }
     void nextSubSelection();
     void prevSubSelection();

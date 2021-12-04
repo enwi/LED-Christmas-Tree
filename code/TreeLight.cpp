@@ -14,7 +14,7 @@ void TreeLight::init(Menu& menu)
 {
     this->menu = &menu;
     FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
-    FastLED.setBrightness(64);
+    setBrightnessLevel(4);
     FastLED.setCorrection(LEDColorCorrection::Typical8mmPixel);
     leds.fill_solid(CRGB::Black);
     FastLED.show();
@@ -79,10 +79,10 @@ void TreeLight::setSpeed(Speed s)
 
 void TreeLight::update()
 {
-    FastLED.show();
     unsigned long t = millis();
     if (t - lastUpdate < 10)
     {
+        FastLED.show();
         return;
     }
     if (menu->isActive())
@@ -95,6 +95,7 @@ void TreeLight::update()
         runEffect();
     }
     lastUpdate = t;
+    FastLED.show();
 }
 
 void TreeLight::resetEffect()
@@ -125,15 +126,26 @@ void TreeLight::setBrightnessLevel(uint8_t level)
         break;
     case 5:
         scale = 96;
+        break;
     case 6:
         scale = 128;
+        break;
     case 7:
         scale = 192;
+        break;
     case 8:
         scale = 255;
         break;
     }
     FastLED.setBrightness(scale);
+}
+
+void TreeLight::initColorMenu()
+{
+    menuTime = millis();
+    menu->setMenuState(Menu::MenuState::colorSelect);
+    menu->setNumSubSelections(8);
+    menu->setSubSelection(colorSelection);
 }
 
 void TreeLight::runEffect()
@@ -190,7 +202,7 @@ void TreeLight::runEffect()
     }
     case Effect::gradientHorizontal: {
         // Gradient between color and color2
-        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        fract16 blendVal = (uint16_t)(effectTime >> 6); // effectTime / 32 => full gradient in ~4s
         if (blendVal >= 512)
         {
             // Full gradient complete, transition to next color
@@ -210,7 +222,7 @@ void TreeLight::runEffect()
     }
     case Effect::gradientVertical: {
         // Gradient between color and color2
-        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        fract16 blendVal = (uint16_t)(effectTime >> 6); // effectTime / 32 => full gradient in ~4s
         if (blendVal >= 512)
         {
             // Full gradient complete, transition to next color
@@ -340,6 +352,26 @@ void TreeLight::displayMenu()
     {
         leds(0, brightnessLevel - 1) = color;
     }
+    else if (menu->getMenuState() == Menu::MenuState::colorSelect)
+    {
+        unsigned long t = millis();
+        // Show color
+        if (colorSelection != menu->getSubSelection())
+        {
+            colorSelection = menu->getSubSelection();
+            menuTime = t;
+            updateColor();
+            updateColor();
+        }
+        else if (t - menuTime > 1000)
+        {
+            menuTime = t;
+            updateColor();
+        }
+        leds[12] = currentColor;
+        leds(8, 11) = color2;
+        leds(0, colorSelection) = CRGB::White;
+    }
 }
 
 ///@brief Generate a harmonic color to the given @ref color
@@ -366,7 +398,7 @@ static CRGB GenerateHarmonicColor(const CHSV color, uint8_t offsetAngle1, uint8_
 {
     // const uint8_t referenceAngle = random(0, 256);
     const uint8_t referenceAngle = color.h;
-    uint8_t randomAngle = random(1, 255) * (rangeAngle0 + rangeAngle1 + rangeAngle2);
+    uint8_t randomAngle = random(1, 255) * (rangeAngle0 + rangeAngle1 + rangeAngle2) / 256;
 
     if (randomAngle > rangeAngle0)
     {
@@ -386,8 +418,34 @@ static CRGB GenerateHarmonicColor(const CHSV color, uint8_t offsetAngle1, uint8_
 void TreeLight::updateColor()
 {
     currentColor = color2;
-    // color2.red = random(0, 256);
-    // color2.green = random(0, 256);
-    // color2.blue = random(0, 256);
-    color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
+
+    switch (colorSelection)
+    {
+    case 0:
+        color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
+        break;
+    case 1:
+        color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
+        break;
+    case 2:
+        color2 = GenerateHarmonicColor(CHSV(0,255,255), 16, 32, 8, 0, 0, 255, 255);
+        break;
+    case 3:
+        color2 = ColorFromPalette(LavaColors_p, random(0, 255));
+        break;
+    case 4:
+        color2 = ColorFromPalette(CloudColors_p, random(0, 255));
+        break;
+    case 5:
+        color2 = ColorFromPalette(OceanColors_p, random(0, 255));
+        break;
+    case 6:
+        color2 = ColorFromPalette(ForestColors_p, random(0, 255));
+        break;
+    default:
+        color2.red = random(0, 255);
+        color2.green = random(0, 255);
+        color2.blue = random(0, 255);
+        break;
+    }
 }

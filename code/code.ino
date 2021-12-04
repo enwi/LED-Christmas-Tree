@@ -70,6 +70,7 @@ void selectBrightness()
 {
     // 8 levels of brigthness
     menu.setNumSubSelections(8);
+    menu.setSubSelection(light.getBrightnessLevel() - 1);
     menu.setMenuState(Menu::MenuState::brightnessSelect);
 }
 
@@ -80,7 +81,7 @@ void updateBrightness()
 
 void selectColor()
 {
-    menu.setMenuState(Menu::MenuState::colorSelect);
+    light.initColorMenu();
 }
 
 void handleButton(AceButton*, uint8_t eventType, uint8_t)

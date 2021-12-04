@@ -16,6 +16,10 @@ void Menu::handleButton(uint8_t eventType)
                 brightnessCallback();
             }
         }
+        else if (state == MenuState::colorSelect)
+        {
+            nextSubSelection();
+        }
         break;
     case AceButton::kEventDoubleClicked:
         if (state == MenuState::brightnessSelect)
@@ -25,6 +29,10 @@ void Menu::handleButton(uint8_t eventType)
             {
                 brightnessCallback();
             }
+        }
+        else if (state == MenuState::colorSelect)
+        {
+            prevSubSelection();
         }
         break;
     case AceButton::kEventRepeatPressed:

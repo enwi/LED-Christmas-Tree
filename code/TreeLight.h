@@ -64,6 +64,7 @@ public:
     }
     void resetEffect();
     void setBrightnessLevel(uint8_t level);
+    uint8_t getBrightnessLevel() const { return brightnessLevel; }
 
     void setLED(const uint8_t start, const uint8_t end, const CRGB color)
     {
@@ -74,6 +75,8 @@ public:
         leds(start, end) = color;
         FastLED.show();
     }
+    void initColorMenu();
+
 
 public:
 #if defined(ESP8266)
@@ -94,12 +97,14 @@ private:
     CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;
     unsigned long lastUpdate = 0;
-    Effect currentEffect = Effect::runningLight;
+    Effect currentEffect = Effect::off;
     CRGB currentColor = CRGB(0, 0xA0, 0xFF);
     CRGB color2 = CRGB(0, 0x40, 0xFF);
     unsigned long colorChangeTime = 0;
     uint8_t speed = 2;
     uint8_t brightnessLevel = 4;
+    unsigned long menuTime = 0;
+    uint8_t colorSelection = 0;
 };
 
 #endif

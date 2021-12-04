@@ -1,4 +1,4 @@
-#ifdef ESP8266
+#if defined(ESP8266)
 #define FASTLED_ALLOW_INTERRUPTS 0
 #endif
 
@@ -8,7 +8,6 @@
 #include "Constants.h"
 #include "Menu.h"
 #include "TreeLight.h"
-
 
 using namespace ace_button;
 
@@ -55,7 +54,7 @@ void initWifi() { }
 void toggleWifi() { }
 #endif
 
-#ifdef ESP8266
+#if defined(ESP8266)
 constexpr uint8_t buttonPin = D2;
 #else
 constexpr uint8_t buttonPin = 2;
@@ -75,7 +74,7 @@ void selectBrightness()
 
 void updateBrightness()
 {
-    light.setBrightnessLevel(menu.getSubSelection()+1);
+    light.setBrightnessLevel(menu.getSubSelection() + 1);
 }
 void selectColor()
 {

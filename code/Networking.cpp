@@ -1,4 +1,4 @@
-#ifdef defined(ESP8266) || defined(ESP32)
+#if defined(ESP8266) || defined(ESP32)
 #include "Networking.h"
 
 const IPAddress Networking::AP_IP = {4, 3, 2, 1};

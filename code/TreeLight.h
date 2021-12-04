@@ -2,7 +2,9 @@
 #define TREE_EFFECT_H
 #include <Arduino.h>
 #include <FastLED.h>
+
 #include "Menu.h"
+
 
 // Config:
 // - brighness
@@ -74,7 +76,7 @@ public:
     }
 
 public:
-#ifdef ESP8266
+#if defined(ESP8266)
     static constexpr uint8_t pin = D1;
 #else
     static constexpr uint8_t pin = 3;

@@ -21,10 +21,10 @@ void TreeLight::init(Menu& menu)
     lastUpdate = millis();
     ledBackup.fill_solid(CRGB::Black);
     // Init random seed
-#if defined(ESP32) ||defined(ESP8266)
+#if defined(ESP32) || defined(ESP8266)
     randomSeed(ESP.getVcc() * analogRead(A0));
 #else
-    randomSeed(analogRead(A0)*17+23);
+    randomSeed(analogRead(A0) * 17 + 23);
 #endif
     // Initialize random colors
     updateColor();
@@ -79,6 +79,7 @@ void TreeLight::setSpeed(Speed s)
 
 void TreeLight::update()
 {
+    FastLED.show();
     unsigned long t = millis();
     if (t - lastUpdate < 10)
     {
@@ -93,7 +94,6 @@ void TreeLight::update()
         effectTime += (t - lastUpdate) * speed;
         runEffect();
     }
-    FastLED.show();
     lastUpdate = t;
 }
 
@@ -336,7 +336,7 @@ void TreeLight::displayMenu()
             break;
         }
     }
-    else if(menu->getMenuState() == Menu::MenuState::brightnessSelect)
+    else if (menu->getMenuState() == Menu::MenuState::brightnessSelect)
     {
         leds(0, brightnessLevel - 1) = color;
     }

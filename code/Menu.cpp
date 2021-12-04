@@ -8,7 +8,8 @@ void Menu::handleButton(uint8_t eventType)
     switch (eventType)
     {
     case AceButton::kEventClicked:
-        if (state == MenuState::brightnessSelect) { 
+        if (state == MenuState::brightnessSelect)
+        {
             nextSubSelection();
             if (brightnessCallback)
             {
@@ -17,7 +18,8 @@ void Menu::handleButton(uint8_t eventType)
         }
         break;
     case AceButton::kEventDoubleClicked:
-        if (state == MenuState::brightnessSelect) {
+        if (state == MenuState::brightnessSelect)
+        {
             prevSubSelection();
             if (brightnessCallback)
             {

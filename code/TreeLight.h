@@ -61,6 +61,7 @@ public:
         FastLED.show();
     }
     void resetEffect();
+    void setBrightnessLevel(uint8_t level);
 
     void setLED(const uint8_t start, const uint8_t end, const CRGB color)
     {
@@ -73,7 +74,11 @@ public:
     }
 
 public:
+#ifdef ESP8266
     static constexpr uint8_t pin = D1;
+#else
+    static constexpr uint8_t pin = 3;
+#endif
     static constexpr uint8_t numLeds = 13;
 
 private:
@@ -92,6 +97,7 @@ private:
     CRGB color2 = CRGB(0, 0x40, 0xFF);
     unsigned long colorChangeTime = 0;
     uint8_t speed = 2;
+    uint8_t brightnessLevel = 4;
 };
 
 #endif

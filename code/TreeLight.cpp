@@ -21,7 +21,11 @@ void TreeLight::init(Menu& menu)
     lastUpdate = millis();
     ledBackup.fill_solid(CRGB::Black);
     // Init random seed
+#if defined(ESP32) ||defined(ESP8266)
     randomSeed(ESP.getVcc() * analogRead(A0));
+#else
+    randomSeed(analogRead(A0)*17+23);
+#endif
     // Initialize random colors
     updateColor();
     updateColor();
@@ -99,6 +103,37 @@ void TreeLight::resetEffect()
     colorChangeTime = 0;
     // Save last effect colors
     ledBackup = leds;
+}
+
+void TreeLight::setBrightnessLevel(uint8_t level)
+{
+    brightnessLevel = level;
+    uint8_t scale = 0;
+    switch (level)
+    {
+    case 1:
+        scale = 16;
+        break;
+    case 2:
+        scale = 32;
+        break;
+    case 3:
+        scale = 48;
+        break;
+    case 4:
+        scale = 64;
+        break;
+    case 5:
+        scale = 96;
+    case 6:
+        scale = 128;
+    case 7:
+        scale = 192;
+    case 8:
+        scale = 255;
+        break;
+    }
+    FastLED.setBrightness(scale);
 }
 
 void TreeLight::runEffect()
@@ -268,6 +303,7 @@ void TreeLight::runEffect()
     }
     if (doFadeIn && effectTime < startFadeIn)
     {
+        // TODO: does not work when speed = 0
         // Scale 0 to startFadeIn
         uint8_t fade = min((startFadeIn - effectTime) * 256 / startFadeIn, (unsigned long)255);
         fade = ease8InOutCubic(fade);
@@ -285,17 +321,24 @@ void TreeLight::displayMenu()
 {
     leds.fill_solid(CRGB::Black);
     CRGB color = CRGB::White;
-    switch (menu->getLongPressMode())
+    if (menu->getMenuState() == Menu::MenuState::mainSelect)
     {
-    case 1:
-        leds[12] = color;
-        break;
-    case 2:
-        leds(8, 11) = color;
-        break;
-    case 3:
-        leds(0, 7) = color;
-        break;
+        switch (menu->getLongPressMode())
+        {
+        case 1:
+            leds[12] = color;
+            break;
+        case 2:
+            leds(8, 11) = color;
+            break;
+        case 3:
+            leds(0, 7) = color;
+            break;
+        }
+    }
+    else if(menu->getMenuState() == Menu::MenuState::brightnessSelect)
+    {
+        leds(0, brightnessLevel - 1) = color;
     }
 }
 

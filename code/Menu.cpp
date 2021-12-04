@@ -32,10 +32,11 @@ void Menu::handleButton(uint8_t eventType)
         {
             longPressMode = 1;
         }
-        else
+        else if (state == MenuState::brightnessSelect || state == MenuState::colorSelect)
         {
             // Leave sub menu (prevent more repeat events from triggering another selection)
             state = MenuState::closing;
+            longPressMode = 0;
         }
         break;
     case AceButton::kEventReleased:

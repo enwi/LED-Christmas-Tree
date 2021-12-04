@@ -76,6 +76,7 @@ void updateBrightness()
 {
     light.setBrightnessLevel(menu.getSubSelection() + 1);
 }
+
 void selectColor()
 {
     menu.setMenuState(Menu::MenuState::colorSelect);
@@ -101,7 +102,6 @@ void setup()
     menu.setMainCallback(2, selectColor);
     menu.setMainCallback(3, toggleWifi);
     menu.setBrightnessCallback(updateBrightness);
-    selectBrightness();
 }
 
 void loop()
@@ -129,10 +129,10 @@ void loop()
 
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
+    menu.handleButton(eventType);
     if (menu.isActive())
     {
         // Only process buttons for menu
-        menu.handleButton(eventType);
         return;
     }
     switch (eventType)
@@ -142,9 +142,6 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         break;
     case AceButton::kEventDoubleClicked:
         light.nextSpeed();
-        break;
-    case AceButton::kEventRepeatPressed:
-        menu.handleButton(eventType);
         break;
     default:
         break;

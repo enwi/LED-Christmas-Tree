@@ -273,7 +273,7 @@ void TreeLight::runEffect()
         if (nLights > 0)
         {
             int end = min((int)numLeds - nLights + lightCount - 1, (int)numLeds);
-            
+
             if (end != numLeds)
             {
                 // Last led can fade out
@@ -429,7 +429,7 @@ void TreeLight::updateColor()
         color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
         break;
     case 2:
-        color2 = GenerateHarmonicColor(CHSV(0,255,255), 16, 32, 8, 0, 0, 255, 255);
+        color2 = GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
         break;
     case 3:
         color2 = ColorFromPalette(LavaColors_p, random(0, 255));

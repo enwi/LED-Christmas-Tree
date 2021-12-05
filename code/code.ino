@@ -87,23 +87,6 @@ void selectColor()
 
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
-    menu.handleButton(eventType);
-    if (menu.isActive())
-    {
-        // Only process buttons for menu
-        return;
-    }
-    switch (eventType)
-    {
-    case AceButton::kEventClicked:
-        light.nextEffect();
-        break;
-    case AceButton::kEventDoubleClicked:
-        light.nextSpeed();
-        break;
-    default:
-        break;
-    }
 #ifdef DEBUG_PRINT
     switch (eventType)
     {
@@ -129,6 +112,25 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         break;
     }
 #endif
+    bool wasActive = menu.isActive();
+    menu.handleButton(eventType);
+    if (wasActive || menu.isActive())
+    {
+        // Only process buttons for menu
+        return;
+    }
+    switch (eventType)
+    {
+    case AceButton::kEventClicked:
+    case AceButton::kEventReleased:
+        light.nextEffect();
+        break;
+    case AceButton::kEventDoubleClicked:
+        light.nextSpeed();
+        break;
+    default:
+        break;
+    }
 }
 
 void setup()

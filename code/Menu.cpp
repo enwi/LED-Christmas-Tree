@@ -57,6 +57,18 @@ void Menu::handleButton(uint8_t eventType)
             }
             longPressMode = 0;
         }
+        else if (state == MenuState::brightnessSelect)
+        {
+            nextSubSelection();
+            if (brightnessCallback)
+            {
+                brightnessCallback();
+            }
+        }
+        else if (state == MenuState::colorSelect)
+        {
+            nextSubSelection();
+        }
         else if (state == MenuState::closing)
         {
             // Released, can return to normal function

@@ -1,6 +1,7 @@
 #if defined(ESP8266)
 #define FASTLED_ALLOW_INTERRUPTS 0
 #endif
+#define DEBUG_PRINT
 
 #include <AceButton.h>
 #include <FastLED.h>
@@ -103,11 +104,39 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
     default:
         break;
     }
+#ifdef DEBUG_PRINT
+    switch (eventType)
+    {
+    case AceButton::kEventClicked:
+        Serial.println("click");
+        break;
+    case AceButton::kEventPressed:
+        Serial.println("press");
+        break;
+    case AceButton::kEventReleased:
+        Serial.println("release");
+        break;
+    case AceButton::kEventDoubleClicked:
+        Serial.println("double");
+        break;
+    case AceButton::kEventRepeatPressed:
+        Serial.println("repeat");
+        break;
+    case AceButton::kEventLongPressed:
+        Serial.println("long");
+        break;
+    default:
+        break;
+    }
+#endif
 }
 
 void setup()
 {
     light.init(menu);
+#ifdef DEBUG_PRINT
+    Serial.begin(57600);
+#endif
 
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
@@ -148,4 +177,15 @@ void loop()
 
     // 3.
     light.update();
+    delay(1);
+
+#ifdef DEBUG_PRINT
+    unsigned long t = millis();
+    if (t % 1000 == 0)
+    {
+        Serial.print(t / 1000);
+        Serial.print(" - Current effect ");
+        Serial.println((int)light.getEffect());
+    }
+#endif
 }

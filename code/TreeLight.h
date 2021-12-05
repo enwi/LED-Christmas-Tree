@@ -50,6 +50,7 @@ public:
 
     void nextEffect();
     void setEffect(Effect e);
+    Effect getEffect() const { return currentEffect; }
     void nextSpeed();
     void setSpeed(Speed s);
     void update();

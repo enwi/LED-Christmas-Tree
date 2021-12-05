@@ -202,7 +202,7 @@ void TreeLight::runEffect()
     }
     case Effect::gradientHorizontal: {
         // Gradient between color and color2
-        fract16 blendVal = (uint16_t)(effectTime >> 6); // effectTime / 32 => full gradient in ~4s
+        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
         if (blendVal >= 512)
         {
             // Full gradient complete, transition to next color
@@ -222,7 +222,7 @@ void TreeLight::runEffect()
     }
     case Effect::gradientVertical: {
         // Gradient between color and color2
-        fract16 blendVal = (uint16_t)(effectTime >> 6); // effectTime / 32 => full gradient in ~4s
+        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
         if (blendVal >= 512)
         {
             // Full gradient complete, transition to next color
@@ -273,6 +273,7 @@ void TreeLight::runEffect()
         if (nLights > 0)
         {
             int end = min((int)numLeds - nLights + lightCount - 1, (int)numLeds);
+            
             if (end != numLeds)
             {
                 // Last led can fade out
@@ -300,7 +301,7 @@ void TreeLight::runEffect()
             // First led is out of bounds or set above
             ++start;
 
-            if (end >= 0)
+            if (end >= 0 && start < numLeds)
             {
                 leds(start, end).fill_solid(currentColor);
             }
@@ -313,7 +314,7 @@ void TreeLight::runEffect()
         break;
     }
     }
-    if (doFadeIn && effectTime < startFadeIn)
+    if (speed > 0 && doFadeIn && effectTime < startFadeIn)
     {
         // TODO: does not work when speed = 0
         // Scale 0 to startFadeIn

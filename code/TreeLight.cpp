@@ -13,7 +13,7 @@
 void TreeLight::init(Menu& menu)
 {
     this->menu = &menu;
-    FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
+    FastLED.addLeds<WS2812, pin, GRB>(leds, numLeds);
     setBrightnessLevel(4);
     FastLED.setCorrection(LEDColorCorrection::Typical8mmPixel);
     leds.fill_solid(CRGB::Black);
@@ -242,16 +242,45 @@ void TreeLight::runEffect()
         break;
     }
     case Effect::rainbowHorizontal: {
-        uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
-        leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
-        leds(8, 11).fill_rainbow(hue, rainbowDeltaHue * 2);
-        leds[12] = leds[0];
+        if (!isColorPalette())
+        {
+            uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
+            leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
+            leds(8, 11).fill_rainbow(hue, rainbowDeltaHue * 2);
+            leds[12] = leds[0];
+        }
+        else
+        {
+            uint8_t startIndex = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
+            uint8_t colorIndex = startIndex;
+            for (uint8_t i = 0; i < 8; ++i)
+            {
+                leds[i] = getPaletteColor(colorIndex);
+                colorIndex += rainbowDeltaHue;
+            }
+            colorIndex = startIndex;
+            for (uint8_t i = 8; i < 12; ++i)
+            {
+                leds[i] = getPaletteColor(colorIndex);
+                colorIndex += rainbowDeltaHue * 2;
+            }
+            leds[12] = leds[0];
+        }
         break;
     }
     case Effect::rainbowVertical: {
         CRGB colors[3];
-        uint8_t hue = (uint8_t)(effectTime >> 4); // effectTime / 16 => full rainbow in ~4s
-        fill_rainbow(colors, 3, hue, rainbowDeltaHue);
+        uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
+        if (!isColorPalette())
+        {
+            fill_rainbow(colors, 3, hue, rainbowDeltaHue);
+        }
+        else
+        {
+            colors[0] = getPaletteColor(hue);
+            colors[1] = getPaletteColor(hue + rainbowDeltaHue);
+            colors[2] = getPaletteColor(hue + rainbowDeltaHue * 2);
+        }
         // Bottom
         leds(0, 7).fill_solid(colors[0]);
         // Middle
@@ -447,6 +476,29 @@ void TreeLight::updateColor()
         color2.red = random(0, 255);
         color2.green = random(0, 255);
         color2.blue = random(0, 255);
+        break;
+    }
+}
+
+bool TreeLight::isColorPalette() const
+{
+    return colorSelection >= 3 && colorSelection < 7;
+}
+
+CRGB TreeLight::getPaletteColor(uint8_t mix) const
+{
+    switch (colorSelection)
+    {
+    case 3:
+        return ColorFromPalette(LavaColors_p, mix);
+    case 4:
+        return ColorFromPalette(CloudColors_p, mix);
+    case 5:
+        return ColorFromPalette(OceanColors_p, mix);
+    case 6:
+        return ColorFromPalette(ForestColors_p, mix);
+    default:
+        return CRGB::Black;
         break;
     }
 }

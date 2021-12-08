@@ -91,6 +91,8 @@ private:
     void runEffect();
     void displayMenu();
     void updateColor();
+    bool isColorPalette() const;
+    CRGB getPaletteColor(uint8_t mix) const;
 
 private:
     Menu* menu;

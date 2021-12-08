@@ -71,8 +71,8 @@ void selectBrightness()
 {
     // 8 levels of brigthness
     menu.setNumSubSelections(8);
-    menu.setSubSelection(light.getBrightnessLevel() - 1);
     menu.setMenuState(Menu::MenuState::brightnessSelect);
+    menu.setSubSelection(light.getBrightnessLevel() - 1);
 }
 
 void updateBrightness()
@@ -112,9 +112,7 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         break;
     }
 #endif
-    bool wasActive = menu.isActive();
-    menu.handleButton(eventType);
-    if (wasActive || menu.isActive())
+    if (menu.handleButton(eventType))
     {
         // Only process buttons for menu
         return;

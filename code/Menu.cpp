@@ -3,7 +3,7 @@
 #include <AceButton.h>
 using namespace ace_button;
 
-void Menu::handleButton(uint8_t eventType)
+bool Menu::handleButton(uint8_t eventType)
 {
     switch (eventType)
     {
@@ -15,10 +15,12 @@ void Menu::handleButton(uint8_t eventType)
             {
                 brightnessCallback();
             }
+            return true;
         }
         else if (state == MenuState::colorSelect)
         {
             nextSubSelection();
+            return true;
         }
         break;
     case AceButton::kEventDoubleClicked:
@@ -29,22 +31,26 @@ void Menu::handleButton(uint8_t eventType)
             {
                 brightnessCallback();
             }
+            return true;
         }
         else if (state == MenuState::colorSelect)
         {
             prevSubSelection();
+            return true;
         }
         break;
     case AceButton::kEventRepeatPressed:
         if (state == MenuState::mainSelect && ++longPressMode > 3)
         {
             longPressMode = 1;
+            return true;
         }
         else if (state == MenuState::brightnessSelect || state == MenuState::colorSelect)
         {
             // Leave sub menu (prevent more repeat events from triggering another selection)
             state = MenuState::closing;
             longPressMode = 0;
+            return true;
         }
         break;
     case AceButton::kEventReleased:
@@ -56,6 +62,7 @@ void Menu::handleButton(uint8_t eventType)
                 cb();
             }
             longPressMode = 0;
+            return true;
         }
         else if (state == MenuState::brightnessSelect)
         {
@@ -64,20 +71,24 @@ void Menu::handleButton(uint8_t eventType)
             {
                 brightnessCallback();
             }
+            return true;
         }
         else if (state == MenuState::colorSelect)
         {
             nextSubSelection();
+            return true;
         }
         else if (state == MenuState::closing)
         {
             // Released, can return to normal function
             state = MenuState::mainSelect;
+            return true;
         }
         break;
     default:
         break;
     }
+    return false;
 }
 
 void Menu::setMainCallback(uint8_t selection, Callback* cb)

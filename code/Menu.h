@@ -12,7 +12,8 @@ public:
         colorSelect,
         closing
     };
-    void handleButton(uint8_t eventType);
+    // Returns true when event is consumed
+    bool handleButton(uint8_t eventType);
     bool isActive() const
     {
         return (state == MenuState::mainSelect && longPressMode != 0)

@@ -21,7 +21,7 @@
 //    5   10   3
 //        4
 
-enum class Effect
+enum class EffectType
 {
     off,
     solid,
@@ -31,6 +31,7 @@ enum class Effect
     rainbowHorizontal,
     rainbowVertical,
     runningLight,
+    twinkleFox,
     maxValue // Not an effect, number of valid effects
 };
 
@@ -49,8 +50,8 @@ public:
     void init(Menu& menu);
 
     void nextEffect();
-    void setEffect(Effect e);
-    Effect getEffect() const { return currentEffect; }
+    void setEffect(EffectType e);
+    EffectType getEffect() const { return currentEffect; }
     void nextSpeed();
     void setSpeed(Speed s);
     void update();
@@ -92,15 +93,23 @@ private:
     void displayMenu();
     void updateColor();
     bool isColorPalette() const;
-    CRGB getPaletteColor(uint8_t mix) const;
+    CRGB getPaletteColor(uint8_t mix, bool doBlend=true) const;
 
+    void effectTwoColorChange();
+    bool effectRunningLight();
+    void effectGradientHorizontal(bool& doFadeIn);
+    void effectGradientVertical(bool& doFadeIn);
+    void effectRainbowHorizontal();
+    void effectRainbowVertical();
+    void effectTwinkleFox();
+    CRGB computeTwinkle(uint32_t clock, uint8_t salt);
 private:
     Menu* menu;
     CRGBArray<numLeds> leds;
     CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;
     unsigned long lastUpdate = 0;
-    Effect currentEffect = Effect::off;
+    EffectType currentEffect = EffectType::off;
     CRGB currentColor = CRGB(0, 0xA0, 0xFF);
     CRGB color2 = CRGB(0, 0x40, 0xFF);
     unsigned long colorChangeTime = 0;

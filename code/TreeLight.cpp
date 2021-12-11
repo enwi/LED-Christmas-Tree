@@ -5,14 +5,14 @@ namespace
     uint8_t attackDecayWave8(uint8_t i)
     {
         // See FastLED TwinkleFox example
-        if (i < 83)
+        if (i < 86)
         {
             return i * 3;
         }
         else
         {
             i -= 86;
-            return 255 - (i + i / 2);
+            return 255 - (i + (i / 2));
         }
     }
     void coolLikeIncandescent(CRGB& c, uint8_t phase)
@@ -359,7 +359,7 @@ void TreeLight::effectTwinkleFox()
 CRGB TreeLight::computeTwinkle(uint32_t clock, uint8_t salt)
 {
     // From FastLED TwinkleFox example by Mark Kriegsman
-    const uint8_t twinkleSpeed = 5; // 0-8
+    const uint8_t twinkleSpeed = 4; // 0-8
     const uint8_t twinkleDensity = 5; // 0-8
     const bool coolIncandescent = true; // fade out into red
 

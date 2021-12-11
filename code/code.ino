@@ -155,6 +155,9 @@ void setup()
     menu.setMainCallback(3, toggleWifi);
     menu.setBrightnessCallback(updateBrightness);
 }
+#ifdef DEBUG_PRINT
+unsigned long printTime = 0;
+#endif
 
 void loop()
 {
@@ -181,11 +184,14 @@ void loop()
 
 #ifdef DEBUG_PRINT
     unsigned long t = millis();
-    if (t % 1000 == 0)
+    if (t - printTime > 1000)
     {
+        printTime = t;
         Serial.print(t / 1000);
         Serial.print(" - Current effect ");
-        Serial.println((int)light.getEffect());
+        Serial.print((int)light.getEffect());
+        Serial.print(", FPS: ");
+        Serial.println(FastLED.getFPS());
     }
 #endif
 }

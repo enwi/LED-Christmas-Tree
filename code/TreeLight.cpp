@@ -542,8 +542,20 @@ void TreeLight::displayMenu()
             updateColor();
         }
         leds[12] = currentColor;
-        leds(8, 11) = color2;
-        leds(0, colorSelection) = CRGB::White;
+        if (isColorPalette())
+        {
+            uint8_t mix = (t / 64);
+            for (uint8_t i = 8; i < 12; ++i)
+            {
+                leds[i] = getPaletteColor(mix, false);
+                mix += 64;
+            }
+        }
+        else
+        {
+            leds(8, 11) = color2;
+        }
+        leds[colorSelection] = CRGB::White;
     }
 }
 

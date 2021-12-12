@@ -6,17 +6,20 @@
 #include <pgmspace.h>
 #endif
 
+#define DEBUG_PRINT
+
+
+#ifdef DEBUG_PRINT
+#define DEBUG(s)   { Serial.print(s); }
+#define DEBUGLN(s)  { Serial.println(s); }
+#else
+#define DEBUG(s)
+#define DEBUGLN(s)
+#endif
+
 /// MAC adress of ESP8266
 // size: 13 chars
 extern char deviceMAC[13];
-
-/// Online
-/// size: 6 chars
-constexpr static const char* ONLINE = "Online";
-
-/// Offline
-/// size: 7 chars
-constexpr static const char* OFFLINE = "Offline";
 
 /// LED Christmas Tree
 /// size: 18 chars

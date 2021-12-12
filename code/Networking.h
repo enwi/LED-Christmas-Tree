@@ -26,16 +26,7 @@ public:
     static void initWifi();
     static void initServer(AsyncWebServer *server, TreeLight *light);
 
-
     static void getStatusJsonString(JsonObject &output);
-
-
-    /*
-        ///@brief Create an access point with the given SSID
-        ///
-        ///@param ssid SSID of access point
-        static void createAP(const char* ssid);
-    */
 
     ///@brief Handle the upload of binary program
     ///

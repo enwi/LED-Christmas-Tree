@@ -264,12 +264,7 @@ void Networking::handleSetLedsApi(AsyncWebServerRequest *request, JsonVariant *j
     JsonObject && data = json->as<JsonObject>();
     light->setBrightnessLevel(data["brightness"]);
     light->setSpeed(static_cast<Speed>((uint8_t)data["speed"]));
-    bool enabled = data["enabled"];
-    if(enabled) {
-        light->setEffect(EffectType::rainbowHorizontal);
-    } else {
-        light->setEffect(EffectType::off);
-    }
+    light->setEffect(static_cast<EffectType>((uint8_t)data["effect"]));
     response->print("OK");
     request->send(response);
 }

@@ -1,5 +1,19 @@
 #include "TreeLight.h"
 
+
+const char* TreeLight::effect_names[] = {
+    "off",
+    "solid",
+    "twoColorChange",
+    "gradientHorizontal",
+    "gradientVertical",
+    "rainbowHorizontal",
+    "rainbowVertical",
+    "runningLight",
+    "twinkleFox",
+};
+
+
 namespace
 {
     uint8_t attackDecayWave8(uint8_t i)
@@ -65,10 +79,15 @@ void TreeLight::init(Menu& menu)
 void TreeLight::getStatusJsonString(JsonObject &output)
 {
     auto && lights = output.createNestedObject("lights");
-    lights["enabled"] = getEffect() != EffectType::off;
     lights["brightness"] = getBrightnessLevel();
     lights["speed"] = getSpeed();
-    lights["effect"] = "----";
+    lights["effect"] = (int)getEffect();
+    JsonArray effects = lights.createNestedArray("effects");
+    for (size_t i = 0; i < (size_t)EffectType::maxValue; i++)
+    {
+        effects.add(TreeLight::effect_names[i]);
+    }
+    
 }
 
 

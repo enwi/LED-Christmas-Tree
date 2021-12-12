@@ -1,6 +1,14 @@
 #pragma once
 
 #include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
+#include <AsyncJson.h>
+
+#include "Constants.h"
+#include "Config.h"
+#include "Mqtt.h"
+#include "TreeLight.h"
+#include "webui/dist/build.html.gz.h"
 
 #if defined(ESP32)
 #include <Update.h>
@@ -15,10 +23,19 @@ public:
     ///@brief Static class has no constructor
     Networking() = delete;
 
-    ///@brief Create an access point with the given SSID
-    ///
-    ///@param ssid SSID of access point
-    static void createAP(const char* ssid);
+    static void initWifi();
+    static void initServer(AsyncWebServer *server, TreeLight *light);
+
+
+    static void getStatusJsonString(JsonObject &output);
+
+
+    /*
+        ///@brief Create an access point with the given SSID
+        ///
+        ///@param ssid SSID of access point
+        static void createAP(const char* ssid);
+    */
 
     ///@brief Handle the upload of binary program
     ///
@@ -27,10 +44,29 @@ public:
     ///@param index Index of the raw @ref data within the whole 'file'
     ///@param data Raw data chunk
     ///@param len Size of the raw @ref data chunk
-    static void handleOTAUpload(
-        AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+    static void handleOTAUpload(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+
+    ///@brief Handle the index page
+    ///@param request Request coming from webserver
+    static void handleIndex(AsyncWebServerRequest* request);
+
+    ///@brief Handle the status api
+    ///@param request Request coming from webserver
+    static void handleStatusApi(AsyncWebServerRequest* request, TreeLight *light);
+
+    ///@brief Handle the config GET api
+    ///@param request Request coming from webserver
+    static void handleConfigApiGet(AsyncWebServerRequest *request);
+
+    ///@brief Handle the config POST api
+    ///@param request Request coming from webserver
+    static void handleConfigApiPost(AsyncWebServerRequest *request, JsonVariant *json);
+
+    ///@brief Handle the set leds api
+    ///@param request Request coming from webserver
+    static void handleSetLedsApi(AsyncWebServerRequest *request, JsonVariant *json, TreeLight *light);
 
 private:
     static const IPAddress AP_IP;
-    static const IPAddress NETMASK;
+    static const IPAddress AP_NETMASK;
 }; // namespace Networking

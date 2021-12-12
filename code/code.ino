@@ -1,21 +1,16 @@
 #if defined(ESP8266)
 #define FASTLED_ALLOW_INTERRUPTS 0
 #endif
-#define DEBUG_PRINT
+
 
 #include <AceButton.h>
 #include <FastLED.h>
 
 #include "Constants.h"
-#include "Config.h"
 #include "Menu.h"
 #include "TreeLight.h"
 
 using namespace ace_button;
-
-#if defined(ESP8266) || defined(ESP32)
-#include <ESPAsyncWebServer.h>
-#include "Networking.h"
 
 #if defined(ESP8266)
 constexpr uint8_t buttonPin = D2;
@@ -26,11 +21,16 @@ constexpr uint8_t buttonPin = 2;
 AceButton button(buttonPin);
 TreeLight light;
 Menu menu;
+
+#if defined(ESP8266) || defined(ESP32)
+#include <ESPAsyncWebServer.h>
+#include "Networking.h"
+#include "Config.h"
+#include "Mqtt.h"
+
 AsyncWebServer server(80); /// Webserver for OTA
 
-boolean apMode = false; /// Has AP been enabled (true) or not
-
-void initWifi() {
+void init_networking() {
     uint8_t mac[6];
     wifi_get_macaddr(STATION_IF, mac);
     sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -42,7 +42,7 @@ void initWifi() {
 }
 
 #else
-void initWifi() { }
+void init_networking() { }
 #endif
 
 
@@ -66,56 +66,45 @@ void selectColor()
 
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
-#ifdef DEBUG_PRINT
-    switch (eventType)
-    {
-    case AceButton::kEventClicked:
-        Serial.println("click");
-        break;
-    case AceButton::kEventPressed:
-        Serial.println("press");
-        break;
-    case AceButton::kEventReleased:
-        Serial.println("release");
-        break;
-    case AceButton::kEventDoubleClicked:
-        Serial.println("double");
-        break;
-    case AceButton::kEventRepeatPressed:
-        Serial.println("repeat");
-        break;
-    case AceButton::kEventLongPressed:
-        Serial.println("long");
-        break;
-    default:
-        break;
-    }
-#endif
     if (menu.handleButton(eventType))
     {
-        // Only process buttons for menu
         return;
     }
     switch (eventType)
     {
-    case AceButton::kEventClicked:
-    case AceButton::kEventReleased:
-        light.nextEffect();
-        break;
-    case AceButton::kEventDoubleClicked:
-        light.nextSpeed();
-        break;
-    default:
-        break;
+        case AceButton::kEventClicked:
+            DEBUGLN("Button clicked");
+            light.nextEffect();
+            break;
+        case AceButton::kEventPressed:
+            DEBUGLN("Button pressed");
+            break;
+        case AceButton::kEventReleased:
+            DEBUGLN("Button released");
+            light.nextEffect();
+            break;
+        case AceButton::kEventDoubleClicked:
+            DEBUGLN("Button double clicked");
+            light.nextSpeed();
+            break;
+        case AceButton::kEventRepeatPressed:
+            DEBUGLN("Button repeat");
+            break;
+        case AceButton::kEventLongPressed:
+            DEBUGLN("Button longpress");
+            break;
+        default:
+            break;
     }
 }
 
 void setup()
 {
     light.init(menu);
-#ifdef DEBUG_PRINT
-    Serial.begin(57600);
-#endif
+    #ifdef DEBUG_PRINT
+        Serial.begin(57600);
+        DEBUGLN("Hello world");
+    #endif
 
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
@@ -128,11 +117,13 @@ void setup()
     buttonConfig->setRepeatPressDelay(1000);
     buttonConfig->setRepeatPressInterval(1000);
 
-    initWifi();
+    init_networking();
+
     menu.setMainCallback(1, selectBrightness);
     menu.setMainCallback(2, selectColor);
     menu.setBrightnessCallback(updateBrightness);
 }
+
 #ifdef DEBUG_PRINT
 unsigned long printTime = 0;
 #endif
@@ -160,16 +151,16 @@ void loop()
     light.update();
     delay(1);
 
-#ifdef DEBUG_PRINT
-    unsigned long t = millis();
-    if (t - printTime > 1000)
-    {
-        printTime = t;
-        Serial.print(t / 1000);
-        Serial.print(" - Current effect ");
-        Serial.print((int)light.getEffect());
-        Serial.print(", FPS: ");
-        Serial.println(FastLED.getFPS());
-    }
-#endif
+    #ifdef DEBUG_PRINT
+        unsigned long t = millis();
+        if (t - printTime > 1000)
+        {
+            printTime = t;
+            DEBUG(t / 1000);
+            DEBUG(" - Current effect ");
+            DEBUG((int)light.getEffect());
+            DEBUG(", FPS: ");
+            DEBUGLN(FastLED.getFPS());
+        }
+    #endif
 }

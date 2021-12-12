@@ -12,6 +12,7 @@ public:
     Config() = delete;
 
     static void initConfig();
+    static void setDefaultConfig();
     static void save();
 
     static StaticJsonDocument<1024> *config;

@@ -6,15 +6,30 @@ const IPAddress Networking::AP_NETMASK = {255, 255, 255, 0};
 
 void Networking::initWifi()
 {
-    Serial.println("Init wifi");
+    DEBUGLN("Init wifi");
 
     char ssid[33] = {};
     sniprintf(ssid, sizeof(ssid), "%s %s", HOSTNAME, deviceMAC);
 
     bool client_enabled = (*Config::config)["wifi"]["client_enabled"];
-    if( client_enabled ) {
-        Serial.println("Using wifi in client mode");
+    bool ap_enabled = (*Config::config)["wifi"]["ap_enabled"];
+
+    if(ap_enabled && client_enabled)
+    {
+        WiFi.mode(WIFI_AP_STA);
+    }
+    else if(ap_enabled)
+    {
+        WiFi.mode(WIFI_AP);
+    }
+    else if (client_enabled)
+    {
         WiFi.mode(WIFI_STA);
+    }
+
+    WiFi.mode(WIFI_STA);
+    if( client_enabled ) {
+        DEBUGLN("Using wifi in client mode");
         String ssid = (*Config::config)["wifi"]["client_ssid"];
         String psk = (*Config::config)["wifi"]["client_password"];
         bool dhcp = (*Config::config)["wifi"]["client_dhcp_enabled"];
@@ -28,47 +43,49 @@ void Networking::initWifi()
             mask.fromString((const char*)((*Config::config)["wifi"]["client_mask"]));
             gw.fromString((const char*)((*Config::config)["wifi"]["client_gateway"]));
             dns.fromString((const char*)((*Config::config)["wifi"]["client_dns"]));
-            Serial.println("Using static ip");
-            if (!WiFi.config(ip, gw, mask, dns, dns)) {
-                Serial.println("STA Failed to configure");
+            DEBUGLN("Using static ip");
+            if (!WiFi.config(ip, gw, mask, dns)) {
+                DEBUGLN("STA Failed to configure");
             }
         } else {
-            Serial.println("Using DHCP");
+            DEBUGLN("Using DHCP");
         }
 
         WiFi.begin(ssid, psk);
-        Serial.print("Connecting to WiFi ..");
+        DEBUG("Connecting to WiFi ..");
         uint64_t start = millis();
         while (WiFi.status() != WL_CONNECTED) {
-            Serial.print('.');
+            DEBUG('.');
             delay(1000);
             if(start + 15000 < millis()) {
                 (*Config::config)["wifi"]["client_enabled"] = false;
                 (*Config::config)["wifi"]["ap_enabled"] = true;
                 Config::save();
-                Serial.println();
-                Serial.println('Failed, enabling AP and rebooting');
+                DEBUGLN();
+                DEBUGLN('Failed, enabling AP and rebooting');
                 Serial.flush();
                 ESP.restart();
             }
         }
-        Serial.println("Connected");
+        DEBUG("Connected: ");
+        DEBUGLN(WiFi.localIP());
+
+        WiFi.setAutoConnect(true);
+        WiFi.setAutoReconnect(true);
     }
 
-    bool ap_enabled = (*Config::config)["wifi"]["ap_enabled"];
     if( ap_enabled ) {
-        Serial.println("Using wifi in ap mode");
-        WiFi.mode(WIFI_AP);
+        DEBUGLN("Using wifi in ap mode");
         WiFi.softAPConfig(AP_IP, AP_IP, AP_NETMASK);
         String ssid = (*Config::config)["wifi"]["ap_ssid"];
         String psk = (*Config::config)["wifi"]["ap_password"];
 
         if(psk.length()==0) {
             WiFi.softAP(ssid);
-            Serial.println("Sarting open AP");
+            DEBUGLN("Sarting open AP");
         } else {
             WiFi.softAP(ssid, psk);
-            Serial.println("Sarting protected AP");
+            DEBUGLN("Sarting protected AP");
         }
     }
 
@@ -108,10 +125,10 @@ void Networking::getStatusJsonString(JsonObject &output)
     bool client_enabled = (*Config::config)["wifi"]["client_enabled"];
 
     auto && wifi_client = networking.createNestedObject("wifi_client");
-    wifi_client["status"] = client_enabled ? ("enabled") : "disabled";
+    wifi_client["status"] = client_enabled ? (WiFi.isConnected() ? "connected" : "enabled") : "disabled";
     wifi_client["ip"] = WiFi.localIP();
-    wifi_client["netmask"] = "0.0.0.0";
-    wifi_client["dns"] = "0.0.0.0";
+    wifi_client["netmask"] = WiFi.subnetMask();
+    wifi_client["dns"] =  WiFi.dnsIP();
 
     auto && wifi_ap = networking.createNestedObject("wifi_ap");
     wifi_ap["status"] = client_enabled ? "disabled" : "enabled";
@@ -123,21 +140,21 @@ void Networking::handleOTAUpload(AsyncWebServerRequest* request, String filename
 {
     if (!index)
     {
-        Serial.printf("UploadStart: %s\n", filename.c_str());
+        DEBUGLN("UploadStart");
         // calculate sketch space required for the update, for ESP32 use the max constant
-#if defined(ESP32)
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN))
-#else
-        const uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
-        if (!Update.begin(maxSketchSpace))
-#endif
-        {
-            // start with max available size
-            Update.printError(Serial);
-        }
-#if defined(ESP8266)
-        Update.runAsync(true);
-#endif
+        #if defined(ESP32)
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN))
+        #else
+            const uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
+            if (!Update.begin(maxSketchSpace))
+        #endif
+            {
+                // start with max available size
+                Update.printError(Serial);
+            }
+        #if defined(ESP8266)
+                Update.runAsync(true);
+        #endif
     }
 
     if (len)
@@ -151,7 +168,7 @@ void Networking::handleOTAUpload(AsyncWebServerRequest* request, String filename
         if (Update.end(true))
         {
             // true to set the size to the current progress
-            Serial.printf("Update Success: %ub written\nRebooting...\n", index + len);
+            DEBUGLN("Update Success, \nRebooting...");
             ESP.restart();
         }
         else
@@ -161,13 +178,15 @@ void Networking::handleOTAUpload(AsyncWebServerRequest* request, String filename
     }
 }
 
-void Networking::handleIndex(AsyncWebServerRequest *request) {
+void Networking::handleIndex(AsyncWebServerRequest *request)
+{
     AsyncWebServerResponse *response = request->beginResponse_P(200, F("text/html"), build_html_gz_start, build_html_gz_size);
     response->addHeader(F("Content-Encoding"), F("gzip"));
     request->send(response);
 }
 
-void Networking::handleStatusApi(AsyncWebServerRequest *request, TreeLight *light) {
+void Networking::handleStatusApi(AsyncWebServerRequest *request, TreeLight *light)
+{
     DynamicJsonDocument output(3000);
 
     auto && obj = output.to<JsonObject>();
@@ -186,7 +205,8 @@ void Networking::handleStatusApi(AsyncWebServerRequest *request, TreeLight *ligh
     request->send(200, "application/json", buffer);
 }
 
-void Networking::handleConfigApiGet(AsyncWebServerRequest *request) {
+void Networking::handleConfigApiGet(AsyncWebServerRequest *request)
+{
     String buffer;
     buffer.reserve(512);
     serializeJson(*Config::config, buffer);
@@ -195,12 +215,15 @@ void Networking::handleConfigApiGet(AsyncWebServerRequest *request) {
 }
 
 
-void Networking::handleConfigApiPost(AsyncWebServerRequest *request, JsonVariant *json) {
+void Networking::handleConfigApiPost(AsyncWebServerRequest *request, JsonVariant *json)
+{
     AsyncResponseStream *response = request->beginResponseStream("text/html");
 
-    Serial.print("Received new config: ");
+    DEBUG("Received new config: ");
+    #ifdef DEBUG_PRINT
     serializeJson(*json, Serial);
-    Serial.println();
+    #endif
+    DEBUGLN();
 
     JsonObject && data = json->as<JsonObject>();
     
@@ -235,7 +258,8 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest *request, JsonVariant
 }
 
 
-void Networking::handleSetLedsApi(AsyncWebServerRequest *request, JsonVariant *json, TreeLight *light) {
+void Networking::handleSetLedsApi(AsyncWebServerRequest *request, JsonVariant *json, TreeLight *light)
+{
     AsyncResponseStream *response = request->beginResponseStream("text/html");
     JsonObject && data = json->as<JsonObject>();
     light->setBrightnessLevel(data["brightness"]);

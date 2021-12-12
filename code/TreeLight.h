@@ -2,6 +2,7 @@
 #define TREE_EFFECT_H
 #include <Arduino.h>
 #include <FastLED.h>
+#include <ArduinoJson.h>
 
 #include "Menu.h"
 
@@ -48,12 +49,14 @@ class TreeLight
 {
 public:
     void init(Menu& menu);
+    void getStatusJsonString(JsonObject &output);
 
     void nextEffect();
     void setEffect(EffectType e);
     EffectType getEffect() const { return currentEffect; }
     void nextSpeed();
     void setSpeed(Speed s);
+    uint8_t getSpeed() const { return speed; }
     void update();
     void setLED(const uint8_t led, const CRGB color)
     {

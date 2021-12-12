@@ -62,6 +62,16 @@ void TreeLight::init(Menu& menu)
     updateColor();
 }
 
+void TreeLight::getStatusJsonString(JsonObject &output)
+{
+    auto && lights = output.createNestedObject("lights");
+    lights["enabled"] = getEffect() != EffectType::off;
+    lights["brightness"] = getBrightnessLevel();
+    lights["speed"] = getSpeed();
+    lights["effect"] = "----";
+}
+
+
 void TreeLight::nextEffect()
 {
     currentEffect = (EffectType)((int)currentEffect + 1);
@@ -76,6 +86,7 @@ void TreeLight::setEffect(EffectType e)
 {
     if (e != currentEffect && e < EffectType::maxValue)
     {
+        currentEffect = e;
         resetEffect();
     }
 }

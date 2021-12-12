@@ -5,7 +5,7 @@ void Mqtt::getStatusJsonString(JsonObject &output)
 {
     auto && mqtt = output.createNestedObject("mqtt");
 
-    mqtt["statuus"] = "disabled";
+    mqtt["status"] = "disabled";
 }
 
 

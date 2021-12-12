@@ -36,6 +36,8 @@ enum class EffectType
     maxValue // Not an effect, number of valid effects
 };
 
+
+
 enum class Speed
 {
     stopped = 0,
@@ -50,6 +52,7 @@ class TreeLight
 public:
     void init(Menu& menu);
     void getStatusJsonString(JsonObject &output);
+    static const char* effect_names[];
 
     void nextEffect();
     void setEffect(EffectType e);

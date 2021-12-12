@@ -5,14 +5,14 @@ namespace
     uint8_t attackDecayWave8(uint8_t i)
     {
         // See FastLED TwinkleFox example
-        if (i < 83)
+        if (i < 86)
         {
             return i * 3;
         }
         else
         {
             i -= 86;
-            return 255 - (i + i / 2);
+            return 255 - (i + (i / 2));
         }
     }
     void coolLikeIncandescent(CRGB& c, uint8_t phase)
@@ -370,7 +370,7 @@ void TreeLight::effectTwinkleFox()
 CRGB TreeLight::computeTwinkle(uint32_t clock, uint8_t salt)
 {
     // From FastLED TwinkleFox example by Mark Kriegsman
-    const uint8_t twinkleSpeed = 5; // 0-8
+    const uint8_t twinkleSpeed = 4; // 0-8
     const uint8_t twinkleDensity = 5; // 0-8
     const bool coolIncandescent = true; // fade out into red
 
@@ -553,8 +553,20 @@ void TreeLight::displayMenu()
             updateColor();
         }
         leds[12] = currentColor;
-        leds(8, 11) = color2;
-        leds(0, colorSelection) = CRGB::White;
+        if (isColorPalette())
+        {
+            uint8_t mix = (t / 64);
+            for (uint8_t i = 8; i < 12; ++i)
+            {
+                leds[i] = getPaletteColor(mix, false);
+                mix += 64;
+            }
+        }
+        else
+        {
+            leds(8, 11) = color2;
+        }
+        leds[colorSelection] = CRGB::White;
     }
 }
 
@@ -603,34 +615,44 @@ void TreeLight::updateColor()
 {
     currentColor = color2;
 
-    switch (colorSelection)
+    CRGB colorDifference;
+    for (uint8_t i = 0; i < 4; ++i)
     {
-    case 0:
-        color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
-        break;
-    case 1:
-        color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
-        break;
-    case 2:
-        color2 = GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
-        break;
-    case 3:
-        color2 = ColorFromPalette(LavaColors_p, random(0, 255));
-        break;
-    case 4:
-        color2 = ColorFromPalette(CloudColors_p, random(0, 255));
-        break;
-    case 5:
-        color2 = ColorFromPalette(OceanColors_p, random(0, 255));
-        break;
-    case 6:
-        color2 = ColorFromPalette(ForestColors_p, random(0, 255));
-        break;
-    default:
-        color2.red = random(0, 255);
-        color2.green = random(0, 255);
-        color2.blue = random(0, 255);
-        break;
+        switch (colorSelection)
+        {
+        case 0:
+            color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
+            break;
+        case 1:
+            color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
+            break;
+        case 2:
+            color2 = GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
+            break;
+        case 3:
+            color2 = ColorFromPalette(LavaColors_p, random(0, 255));
+            break;
+        case 4:
+            color2 = ColorFromPalette(CloudColors_p, random(0, 255));
+            break;
+        case 5:
+            color2 = ColorFromPalette(OceanColors_p, random(0, 255));
+            break;
+        case 6:
+            color2 = ColorFromPalette(ForestColors_p, random(0, 255));
+            break;
+        default:
+            color2.red = random(0, 255);
+            color2.green = random(0, 255);
+            color2.blue = random(0, 255);
+            break;
+        }
+        colorDifference = currentColor;
+        colorDifference -= color2;
+        if (colorDifference.getAverageLight() > 8)
+        {
+            return;
+        }
     }
 }
 

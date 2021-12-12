@@ -69,12 +69,11 @@ void Config::setDefaultConfig()
     (*config)["wifi"]["ap_password"] = "";
 
     (*config)["mqtt"]["enabled"] = false;
-    (*config)["mqtt"]["server"] = true;
+    (*config)["mqtt"]["server"] = "";
     (*config)["mqtt"]["port"] = 1883;
     (*config)["mqtt"]["id"] = "LedChristmasTree";
     (*config)["mqtt"]["user"] = "";
     (*config)["mqtt"]["password"] = "";
-            
 }
 
 void Config::save()

@@ -53,6 +53,7 @@ Compiling the software yourself involves a custom setup of libraries and setting
    - [ArduinoJSON](https://github.com/bblanchon/ArduinoJson) version `6.18.5` or newer
    - [FastLED](https://github.com/FastLED/FastLED) version `3.4.0` or newer
    - [AceButton](https://github.com/bxparks/AceButton) version `1.9.1` or newer
+   - [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) version `1.2.2` or newer
    - [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) version `1.2.3` or newer
 3. Open the project in Arduin0 IDE (or VSCode)
 4. Select Board `LOLIN(WEMOS) D1 R2 & mini`

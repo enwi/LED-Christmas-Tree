@@ -65,6 +65,7 @@ jobs:
           arduino-cli lib install ArduinoJson
           arduino-cli lib install FastLED
           arduino-cli lib install AceButton
+          arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncTCP.git
           arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git
       
       # Finally, we compile the sketch, using the FQBN that was set

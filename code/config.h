@@ -1,5 +1,7 @@
 #pragma once
 
+#if defined(ESP8266) || defined(ESP32)
+
 #include <ArduinoJson.h>
 #include <FS.h>
 
@@ -19,3 +21,5 @@ public:
 
 private:
 }; // namespace Networking
+
+#endif

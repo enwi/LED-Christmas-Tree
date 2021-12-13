@@ -1,5 +1,7 @@
 #include "Config.h"
 
+#if defined(ESP8266) || defined(ESP32)
+
 StaticJsonDocument<1024>* Config::config;
 
 void Config::initConfig()
@@ -91,3 +93,5 @@ void Config::save()
 
     configFile.close();
 }
+
+#endif

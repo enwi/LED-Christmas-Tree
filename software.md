@@ -45,9 +45,12 @@ python3 esptool.py --chip esp8266 --port <your port> --baud 460800 --before defa
 Compiling the software yourself involves a custom setup of libraries and settings inside the Arduino IDE or VS Code.
 
 1. Download or Clone the [repository](https://github.com/enwi/LED-Christmas-Tree)
+   1. To clone run `git clone git@github.com:enwi/LED-Christmas-Tree.git` or `git clone https://github.com/enwi/LED-Christmas-Tree.git`
+   2. To update the submodule run `git submodule update --init`
 2. Make sure you have installed
    - [Arduino IDE](https://www.arduino.cc/en/software) version `1.8.13` or newer
    - [ESP8266 Core](https://github.com/esp8266/Arduino#contents) exactly version `2.7.4` (background https://github.com/FastLED/FastLED/issues/1322)
+   - [ArduinoJSON](https://github.com/bblanchon/ArduinoJson) version `6.18.5` or newer
    - [FastLED](https://github.com/FastLED/FastLED) version `3.4.0` or newer
    - [AceButton](https://github.com/bxparks/AceButton) version `1.9.1` or newer
    - [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) version `1.2.3` or newer

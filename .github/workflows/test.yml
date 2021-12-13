@@ -55,6 +55,7 @@ jobs:
       # dynamically by the build matrix.
       - name: Install platform
         run: |
+          set ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL=true
           arduino-cli core update-index
           arduino-cli core install ${{ matrix.arduino-platform }}
           arduino-cli lib install ArduinoJson

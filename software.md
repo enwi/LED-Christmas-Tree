@@ -16,18 +16,18 @@ If you want to update the software you can upload it wirelessly as described in 
 ### <a name="uploadReleaseUsb"></a>USB upload
 1. Download and unzip [ESPEasyFlasher](https://github.com/BattloXX/ESPEasyFlasher/releases/download/1.1/FlashESP8266.zip)
 2. Download the latest [release](https://github.com/enwi/LED-Christmas-Tree/releases)
-3. Place `code.ino.d1_mini.bin` inside the `ESPEasyFlasher` folder
+3. Place `code.ino.bin` inside the `ESPEasyFlasher` folder
 4. Using a USB cable plug in the Christmas Tree to your PC
 5. Start/Execute ESPEasyFlasher
 6. Select the COM-Port of your ESP
-7. Select the firmware `.\code.ino.d1_mini.bin`
+7. Select the firmware `.\code.ino.bin`
 8. Press `Flash`
 9. Enjoy your Christmas Tree
 
 Alternatively (for example on Linux) you can use the [esptool](https://github.com/espressif/esptool) directly using python from the commandline.
 For this use the command:
 ```
-python3 esptool.py --chip esp8266 --port <your port> --baud 460800 --before default_reset --after hard_reset write_flash 0x0 code.ino.d1_mini.bin
+python3 esptool.py --chip esp8266 --port <your port> --baud 460800 --before default_reset --after hard_reset write_flash 0x0 code.ino.bin
 ```
 
 ### <a name="uploadReleaseOta"></a>OTA
@@ -37,7 +37,7 @@ python3 esptool.py --chip esp8266 --port <your port> --baud 460800 --before defa
    - The Christmas Tree will show up as `LED Christmas Tree AC12B35D67EF` (the last part will differ for you as it is the MAC address)
 4. Once connected your phone/tablet/pc should ask you to sign in (captive portal). On Android you will need to click on the popup on other devices (iOS, MacOS) the captive portal will open automatically. Once opened you are greeted with the OTA GUI.
 5. If the page for whatever reason does not open, open a webbrowser and enter [`4.3.2.1/ota`](http://4.3.2.1/ota)
-6. Press `Select file` and select the downloaded `code.ino.d1_mini.bin`.
+6. Press `Select file` and select the downloaded `code.ino.bin`.
 7. Press `Upload` and wait until the browser displays `cannot load webpage`
 8. Enjoy your new Christmas Tree Features
 

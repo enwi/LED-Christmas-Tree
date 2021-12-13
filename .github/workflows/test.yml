@@ -43,8 +43,8 @@ jobs:
       # First of all, we clone the repo using the `checkout` action.
       - name: Checkout
         uses: actions/checkout@v2
-          with:
-            submodules: true
+        with:
+          submodules: true
 
       # We use the `arduino/setup-arduino-cli` action to install and
       # configure the Arduino CLI on the system.

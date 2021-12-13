@@ -1,6 +1,5 @@
 #include "TreeLight.h"
 
-
 const char* TreeLight::effect_names[] = {
     "off",
     "solid",
@@ -12,7 +11,6 @@ const char* TreeLight::effect_names[] = {
     "runningLight",
     "twinkleFox",
 };
-
 
 namespace
 {
@@ -50,6 +48,21 @@ namespace
 // rainbow
 // running light
 
+// DEFINE_GRADIENT_PALETTE(christmas1) {0, 255, 0, 0, //  Red
+//     128, 0, 255, 0, // Green
+//     255, 255, 0, 0}; // and back to Red
+
+// DEFINE_GRADIENT_PALETTE(christmas2) {0, 223, 97, 101, // Light Carmine Pink
+//     42, 185, 42, 54, // American Red
+//     85, 153, 0, 39, // Pink Raspberry
+//     127, 26, 131, 12, // Verse Green
+//     170, 89, 162, 47, // RYB Green
+//     212, 148, 186, 98, // Dollar Bill
+//     255, 223, 97, 101}; // and back to Light Carmine Pink
+
+// CRGBPalette16 christmas1_p = christmas1;
+// CRGBPalette16 christmas2_p = christmas2;
+
 void TreeLight::init(Menu& menu)
 {
     this->menu = &menu;
@@ -76,9 +89,9 @@ void TreeLight::init(Menu& menu)
     updateColor();
 }
 
-void TreeLight::getStatusJsonString(JsonObject &output)
+void TreeLight::getStatusJsonString(JsonObject& output)
 {
-    auto && lights = output.createNestedObject("lights");
+    auto&& lights = output.createNestedObject("lights");
     lights["brightness"] = getBrightnessLevel();
     lights["speed"] = getSpeed();
     lights["effect"] = (int)getEffect();
@@ -87,9 +100,7 @@ void TreeLight::getStatusJsonString(JsonObject &output)
     {
         effects.add(TreeLight::effect_names[i]);
     }
-    
 }
-
 
 void TreeLight::nextEffect()
 {

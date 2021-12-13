@@ -1,11 +1,10 @@
 #ifndef TREE_EFFECT_H
 #define TREE_EFFECT_H
 #include <Arduino.h>
-#include <FastLED.h>
 #include <ArduinoJson.h>
+#include <FastLED.h>
 
 #include "Menu.h"
-
 
 // Config:
 // - brighness
@@ -22,6 +21,12 @@
 //    5   10   3
 //        4
 
+// DECLARE_GRADIENT_PALETTE(christmas1);
+// DECLARE_GRADIENT_PALETTE(christmas2);
+
+// extern CRGBPalette16 christmas1_p;
+// extern CRGBPalette16 christmas2_p;
+
 enum class EffectType
 {
     off,
@@ -36,8 +41,6 @@ enum class EffectType
     maxValue // Not an effect, number of valid effects
 };
 
-
-
 enum class Speed
 {
     stopped = 0,
@@ -51,7 +54,7 @@ class TreeLight
 {
 public:
     void init(Menu& menu);
-    void getStatusJsonString(JsonObject &output);
+    void getStatusJsonString(JsonObject& output);
     static const char* effect_names[];
 
     void nextEffect();
@@ -85,7 +88,6 @@ public:
     }
     void initColorMenu();
 
-
 public:
 #if defined(ESP8266)
     static constexpr uint8_t pin = D1;
@@ -99,7 +101,7 @@ private:
     void displayMenu();
     void updateColor();
     bool isColorPalette() const;
-    CRGB getPaletteColor(uint8_t mix, bool doBlend=true) const;
+    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const;
 
     void effectTwoColorChange();
     bool effectRunningLight();
@@ -109,6 +111,7 @@ private:
     void effectRainbowVertical();
     void effectTwinkleFox();
     CRGB computeTwinkle(uint32_t clock, uint8_t salt);
+
 private:
     Menu* menu;
     CRGBArray<numLeds> leds;

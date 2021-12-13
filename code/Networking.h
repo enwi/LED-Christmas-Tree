@@ -1,13 +1,14 @@
 #pragma once
 
-#include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
+#include <ESPAsyncWebServer.h>
 
-#include "Constants.h"
 #include "Config.h"
+#include "Constants.h"
 #include "Mqtt.h"
 #include "TreeLight.h"
+
 #include "webui/cpp/build.html.gz.h"
 
 #if defined(ESP32)
@@ -24,9 +25,9 @@ public:
     Networking() = delete;
 
     static void initWifi();
-    static void initServer(AsyncWebServer *server, TreeLight *light);
+    static void initServer(AsyncWebServer* server, TreeLight* light);
 
-    static void getStatusJsonString(JsonObject &output);
+    static void getStatusJsonString(JsonObject& output);
 
     ///@brief Handle the upload of binary program
     ///
@@ -35,7 +36,8 @@ public:
     ///@param index Index of the raw @ref data within the whole 'file'
     ///@param data Raw data chunk
     ///@param len Size of the raw @ref data chunk
-    static void handleOTAUpload(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+    static void handleOTAUpload(
+        AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
 
     ///@brief Handle the index page
     ///@param request Request coming from webserver
@@ -43,19 +45,19 @@ public:
 
     ///@brief Handle the status api
     ///@param request Request coming from webserver
-    static void handleStatusApi(AsyncWebServerRequest* request, TreeLight *light);
+    static void handleStatusApi(AsyncWebServerRequest* request, TreeLight* light);
 
     ///@brief Handle the config GET api
     ///@param request Request coming from webserver
-    static void handleConfigApiGet(AsyncWebServerRequest *request);
+    static void handleConfigApiGet(AsyncWebServerRequest* request);
 
     ///@brief Handle the config POST api
     ///@param request Request coming from webserver
-    static void handleConfigApiPost(AsyncWebServerRequest *request, JsonVariant *json);
+    static void handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant* json);
 
     ///@brief Handle the set leds api
     ///@param request Request coming from webserver
-    static void handleSetLedsApi(AsyncWebServerRequest *request, JsonVariant *json, TreeLight *light);
+    static void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light);
 
 private:
     static const IPAddress AP_IP;

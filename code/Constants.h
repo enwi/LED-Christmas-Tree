@@ -8,10 +8,15 @@
 
 #define DEBUG_PRINT
 
-
 #ifdef DEBUG_PRINT
-#define DEBUG(s)   { Serial.print(s); }
-#define DEBUGLN(s)  { Serial.println(s); }
+#define DEBUG(s)                                                                                                       \
+    {                                                                                                                  \
+        Serial.print(s);                                                                                               \
+    }
+#define DEBUGLN(s)                                                                                                     \
+    {                                                                                                                  \
+        Serial.println(s);                                                                                             \
+    }
 #else
 #define DEBUG(s)
 #define DEBUGLN(s)

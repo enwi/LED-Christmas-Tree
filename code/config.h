@@ -1,9 +1,9 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include "Constants.h"
 #include <FS.h>
 
+#include "Constants.h"
 
 class Config
 {
@@ -15,7 +15,7 @@ public:
     static void setDefaultConfig();
     static void save();
 
-    static StaticJsonDocument<1024> *config;
+    static StaticJsonDocument<1024>* config;
 
 private:
 }; // namespace Networking

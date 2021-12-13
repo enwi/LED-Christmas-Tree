@@ -1,6 +1,6 @@
-#include "config.h"
+#include "Config.h"
 
-StaticJsonDocument<1024> *Config::config;
+StaticJsonDocument<1024>* Config::config;
 
 void Config::initConfig()
 {
@@ -9,7 +9,7 @@ void Config::initConfig()
         DEBUGLN("Mounted file system");
         if (SPIFFS.exists("/config.json"))
         {
-            
+
             DEBUGLN("Reading config file");
             File configFile = SPIFFS.open("/config.json", "r");
 
@@ -24,15 +24,14 @@ void Config::initConfig()
                 {
                     DEBUGLN(F("Failed to read file, using default configuration"));
                     Config::setDefaultConfig();
-                }    
+                }
                 else
                 {
-                    #ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT
                     serializeJson(*config, Serial);
-                    #endif
+#endif
                     DEBUGLN("");
                 }
-
             }
         }
         else
@@ -81,12 +80,13 @@ void Config::save()
     DEBUGLN("Writing config file");
     File configFile = SPIFFS.open("/config.json", "w");
 
-    if (serializeJson(*config, configFile) == 0) {
+    if (serializeJson(*config, configFile) == 0)
+    {
         DEBUGLN(F("Failed to write to file"));
     }
-    #ifdef DEBUG_PRINT
+#ifdef DEBUG_PRINT
     serializeJson(*config, Serial);
-    #endif
+#endif
     DEBUGLN();
 
     configFile.close();

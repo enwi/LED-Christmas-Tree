@@ -2,7 +2,6 @@
 #define FASTLED_ALLOW_INTERRUPTS 0
 #endif
 
-
 #include <AceButton.h>
 #include <FastLED.h>
 
@@ -24,19 +23,22 @@ Menu menu;
 
 #if defined(ESP8266) || defined(ESP32)
 #include <ESPAsyncWebServer.h>
-#include "Networking.h"
+
 #include "Config.h"
 #include "Mqtt.h"
+#include "Networking.h"
+
 
 AsyncWebServer server(80); /// Webserver for OTA
 
-void init_networking() {
+void init_networking()
+{
     uint8_t mac[6];
     wifi_get_macaddr(STATION_IF, mac);
     sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     Config::initConfig();
-    
+
     Networking::initWifi();
     Networking::initServer(&server, &light);
 }
@@ -44,7 +46,6 @@ void init_networking() {
 #else
 void init_networking() { }
 #endif
-
 
 void selectBrightness()
 {
@@ -72,39 +73,39 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
     }
     switch (eventType)
     {
-        case AceButton::kEventClicked:
-            DEBUGLN("Button clicked");
-            light.nextEffect();
-            break;
-        case AceButton::kEventPressed:
-            DEBUGLN("Button pressed");
-            break;
-        case AceButton::kEventReleased:
-            DEBUGLN("Button released");
-            light.nextEffect();
-            break;
-        case AceButton::kEventDoubleClicked:
-            DEBUGLN("Button double clicked");
-            light.nextSpeed();
-            break;
-        case AceButton::kEventRepeatPressed:
-            DEBUGLN("Button repeat");
-            break;
-        case AceButton::kEventLongPressed:
-            DEBUGLN("Button longpress");
-            break;
-        default:
-            break;
+    case AceButton::kEventClicked:
+        DEBUGLN("Button clicked");
+        light.nextEffect();
+        break;
+    case AceButton::kEventPressed:
+        DEBUGLN("Button pressed");
+        break;
+    case AceButton::kEventReleased:
+        DEBUGLN("Button released");
+        light.nextEffect();
+        break;
+    case AceButton::kEventDoubleClicked:
+        DEBUGLN("Button double clicked");
+        light.nextSpeed();
+        break;
+    case AceButton::kEventRepeatPressed:
+        DEBUGLN("Button repeat");
+        break;
+    case AceButton::kEventLongPressed:
+        DEBUGLN("Button longpress");
+        break;
+    default:
+        break;
     }
 }
 
 void setup()
 {
     light.init(menu);
-    #ifdef DEBUG_PRINT
-        Serial.begin(57600);
-        DEBUGLN("Hello world");
-    #endif
+#ifdef DEBUG_PRINT
+    Serial.begin(57600);
+    DEBUGLN("Hello world");
+#endif
 
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
@@ -151,16 +152,16 @@ void loop()
     light.update();
     delay(1);
 
-    #ifdef DEBUG_PRINT
-        unsigned long t = millis();
-        if (t - printTime > 1000)
-        {
-            printTime = t;
-            DEBUG(t / 1000);
-            DEBUG(" - Current effect ");
-            DEBUG((int)light.getEffect());
-            DEBUG(", FPS: ");
-            DEBUGLN(FastLED.getFPS());
-        }
-    #endif
+#ifdef DEBUG_PRINT
+    unsigned long t = millis();
+    if (t - printTime > 1000)
+    {
+        printTime = t;
+        DEBUG(t / 1000);
+        DEBUG(" - Current effect ");
+        DEBUG((int)light.getEffect());
+        DEBUG(", FPS: ");
+        DEBUGLN(FastLED.getFPS());
+    }
+#endif
 }

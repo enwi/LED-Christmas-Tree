@@ -73,4 +73,4 @@ jobs:
       - name: Compile Sketch
         run: |
           arduino-cli compile --fqbn "${{ matrix.fqbn }}" --export-binaries ./code
-          ls
+          ls code/build

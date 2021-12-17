@@ -1,19 +1,53 @@
 #include "TreeLight.h"
 
-const char* TreeLight::effect_names[] = {
-    "off",
-    "solid",
-    "twoColorChange",
-    "gradientHorizontal",
-    "gradientVertical",
-    "rainbowHorizontal",
-    "rainbowVertical",
-    "runningLight",
-    "twinkleFox",
-};
-
 namespace
 {
+    // A mostly red palette with green accents and white trim.
+    // "CRGB::Gray" is used as white to keep the brightness more uniform.
+    const TProgmemRGBPalette16 RedGreenWhite_p FL_PROGMEM
+        = {CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red,
+            CRGB::Gray, CRGB::Gray, CRGB::Green, CRGB::Green, CRGB::Green, CRGB::Green};
+
+    // A mostly (dark) green palette with red berries.
+    constexpr uint32_t Holly_Green = 0x00580c;
+    constexpr uint32_t Holly_Red = 0xB00402;
+    const TProgmemRGBPalette16 Holly_p FL_PROGMEM
+        = {Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green,
+            Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Green, Holly_Red};
+
+    // A red and white striped palette
+    // "CRGB::Gray" is used as white to keep the brightness more uniform.
+    const TProgmemRGBPalette16 RedWhite_p FL_PROGMEM
+        = {CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Gray, CRGB::Gray, CRGB::Gray, CRGB::Gray, CRGB::Red,
+            CRGB::Red, CRGB::Red, CRGB::Red, CRGB::Gray, CRGB::Gray, CRGB::Gray, CRGB::Gray};
+
+    // A mostly blue palette with white accents.
+    // "CRGB::Gray" is used as white to keep the brightness more uniform.
+    const TProgmemRGBPalette16 BlueWhite_p FL_PROGMEM
+        = {CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue,
+            CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Blue, CRGB::Gray, CRGB::Gray, CRGB::Gray};
+
+    // A pure "fairy light" palette with some brightness variations
+    constexpr uint32_t HALFFAIRY = ((CRGB::FairyLight & 0xFEFEFE) / 2);
+    constexpr uint32_t QUARTERFAIRY = ((CRGB::FairyLight & 0xFCFCFC) / 4);
+    const TProgmemRGBPalette16 FairyLight_p FL_PROGMEM = {CRGB::FairyLight, CRGB::FairyLight, CRGB::FairyLight,
+        CRGB::FairyLight, HALFFAIRY, HALFFAIRY, CRGB::FairyLight, CRGB::FairyLight, QUARTERFAIRY, QUARTERFAIRY,
+        CRGB::FairyLight, CRGB::FairyLight, CRGB::FairyLight, CRGB::FairyLight, CRGB::FairyLight, CRGB::FairyLight};
+
+    // A palette of soft snowflakes with the occasional bright one
+    const TProgmemRGBPalette16 Snow_p FL_PROGMEM = {0x304048, 0x304048, 0x304048, 0x304048, 0x304048, 0x304048,
+        0x304048, 0x304048, 0x304048, 0x304048, 0x304048, 0x304048, 0x304048, 0x304048, 0x304048, 0xE0F0FF};
+
+    // A palette reminiscent of large 'old-school' C9-size tree lights
+    // in the five classic colors: red, orange, green, blue, and white.
+    constexpr uint32_t C9_Red = 0xB80400;
+    constexpr uint32_t C9_Orange = 0x902C02;
+    constexpr uint32_t C9_Green = 0x046002;
+    constexpr uint32_t C9_Blue = 0x070758;
+    constexpr uint32_t C9_White = 0x606820;
+    const TProgmemRGBPalette16 RetroC9_p FL_PROGMEM = {C9_Red, C9_Orange, C9_Red, C9_Orange, C9_Orange, C9_Red,
+        C9_Orange, C9_Red, C9_Green, C9_Green, C9_Green, C9_Green, C9_Blue, C9_Blue, C9_Blue, C9_White};
+
     uint8_t attackDecayWave8(uint8_t i)
     {
         // See FastLED TwinkleFox example
@@ -37,6 +71,36 @@ namespace
         c.b = qsub8(c.b, cooling * 2);
     }
 } // namespace
+
+const char* TreeLight::effect_names[] = {
+    "off",
+    "solid",
+    "twoColorChange",
+    "gradientHorizontal",
+    "gradientVertical",
+    "rainbowHorizontal",
+    "rainbowVertical",
+    "runningLight",
+    "twinkleFox",
+};
+
+TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
+{
+    static TProgmemRGBPalette16* palettes[] = {nullptr, // harmonic colors
+        nullptr, //
+        nullptr, //
+        &Holly_p, //
+        &RedGreenWhite_p, //
+        &RetroC9_p, //
+        &FairyLight_p, //
+        &BlueWhite_p};
+
+    if (i < (sizeof(palettes) / sizeof(palettes[0])))
+    {
+        return palettes[i];
+    }
+    return nullptr;
+}
 
 // Effects
 // two color change
@@ -78,6 +142,8 @@ void TreeLight::init(Menu& menu)
     FastLED.show();
     lastUpdate = millis();
     ledBackup.fill_solid(CRGB::Black);
+    setColorSelection(0);
+
     // Init random seed
 #if defined(ESP32) || defined(ESP8266)
     randomSeed(ESP.getVcc() * analogRead(A0));
@@ -218,6 +284,23 @@ void TreeLight::initColorMenu()
     menu->setMenuState(Menu::MenuState::colorSelect);
     menu->setNumSubSelections(8);
     menu->setSubSelection(colorSelection);
+}
+
+void TreeLight::setColorSelection(uint8_t index)
+{
+    if (index != colorSelection)
+    {
+        TProgmemRGBPalette16* palette = getPaletteSelection(index);
+        if (palette != nullptr)
+        {
+            currentPalette = *palette;
+        }
+        else
+        {
+            fill_solid(currentPalette, 16, CRGB::Black);
+        }
+        colorSelection = index;
+    }
 }
 
 void TreeLight::runEffect()
@@ -572,7 +655,7 @@ void TreeLight::displayMenu()
         // Show color
         if (colorSelection != menu->getSubSelection())
         {
-            colorSelection = menu->getSubSelection();
+            setColorSelection(menu->getSubSelection());
             menuTime = t;
             updateColor();
             updateColor();
@@ -648,34 +731,26 @@ void TreeLight::updateColor()
     CRGB colorDifference;
     for (uint8_t i = 0; i < 4; ++i)
     {
-        switch (colorSelection)
+        if (isColorPalette())
         {
-        case 0:
-            color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
-            break;
-        case 1:
-            color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
-            break;
-        case 2:
-            color2 = GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
-            break;
-        case 3:
-            color2 = ColorFromPalette(LavaColors_p, random(0, 255));
-            break;
-        case 4:
-            color2 = ColorFromPalette(CloudColors_p, random(0, 255));
-            break;
-        case 5:
-            color2 = ColorFromPalette(OceanColors_p, random(0, 255));
-            break;
-        case 6:
-            color2 = ColorFromPalette(ForestColors_p, random(0, 255));
-            break;
-        default:
-            color2.red = random(0, 255);
-            color2.green = random(0, 255);
-            color2.blue = random(0, 255);
-            break;
+            color2 = ColorFromPalette(currentPalette, random(0, 255));
+        }
+        else
+        {
+            switch (colorSelection)
+            {
+            case 0:
+                color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
+                break;
+            case 1:
+                color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
+                break;
+            case 2:
+                color2 = GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
+                break;
+            default:
+                color2 = CRGB::Black;
+            }
         }
         colorDifference = currentColor;
         colorDifference -= color2;
@@ -688,22 +763,17 @@ void TreeLight::updateColor()
 
 bool TreeLight::isColorPalette() const
 {
-    return colorSelection >= 3 && colorSelection < 7;
+    return getPaletteSelection(colorSelection) != nullptr;
 }
 
 CRGB TreeLight::getPaletteColor(uint8_t mix, bool doBlend) const
 {
-    switch (colorSelection)
+    if (isColorPalette())
     {
-    case 3:
-        return ColorFromPalette(LavaColors_p, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
-    case 4:
-        return ColorFromPalette(CloudColors_p, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
-    case 5:
-        return ColorFromPalette(OceanColors_p, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
-    case 6:
-        return ColorFromPalette(ForestColors_p, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
-    default:
+        color2 = ColorFromPalette(currentPalette, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
+    }
+    else
+    {
         if (!doBlend)
         {
             if (mix < 128)
@@ -719,6 +789,5 @@ CRGB TreeLight::getPaletteColor(uint8_t mix, bool doBlend) const
         {
             return blend(currentColor, color2, mix);
         }
-        break;
     }
 }

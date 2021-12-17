@@ -21,11 +21,11 @@
 //    5   10   3
 //        4
 
-// DECLARE_GRADIENT_PALETTE(christmas1);
-// DECLARE_GRADIENT_PALETTE(christmas2);
+// Improvements:
+// - Feedback when effect is changed by button (short flash?)
+// - Indicate Wifi on/off when option is selected (different fading animations)
+// - Color selection first option in menu, because it is changed more often than brightness
 
-// extern CRGBPalette16 christmas1_p;
-// extern CRGBPalette16 christmas2_p;
 
 enum class EffectType
 {
@@ -87,6 +87,7 @@ public:
         FastLED.show();
     }
     void initColorMenu();
+    void setColorSelection(uint8_t index);
 
 public:
 #if defined(ESP8266)
@@ -112,6 +113,9 @@ private:
     void effectTwinkleFox();
     CRGB computeTwinkle(uint32_t clock, uint8_t salt);
 
+    // returns nullptr if selection is not a palette
+    static TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
+
 private:
     Menu* menu;
     CRGBArray<numLeds> leds;
@@ -121,6 +125,7 @@ private:
     EffectType currentEffect = EffectType::off;
     CRGB currentColor = CRGB(0, 0xA0, 0xFF);
     CRGB color2 = CRGB(0, 0x40, 0xFF);
+    CRGBPalette16 currentPalette {CRGB::Black};
     unsigned long colorChangeTime = 0;
     uint8_t speed = 2;
     uint8_t brightnessLevel = 4;

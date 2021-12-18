@@ -72,18 +72,6 @@ namespace
     }
 } // namespace
 
-const char* TreeLight::effect_names[] = {
-    "off",
-    "solid",
-    "twoColorChange",
-    "gradientHorizontal",
-    "gradientVertical",
-    "rainbowHorizontal",
-    "rainbowVertical",
-    "runningLight",
-    "twinkleFox",
-};
-
 TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
 {
     static TProgmemRGBPalette16* palettes[] = {nullptr, // harmonic colors
@@ -112,24 +100,403 @@ TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
 // rainbow
 // running light
 
-// DEFINE_GRADIENT_PALETTE(christmas1) {0, 255, 0, 0, //  Red
-//     128, 0, 255, 0, // Green
-//     255, 255, 0, 0}; // and back to Red
+class OffEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        leds.fill_solid(CRGB::Black);
+        return {};
+    }
 
-// DEFINE_GRADIENT_PALETTE(christmas2) {0, 223, 97, 101, // Light Carmine Pink
-//     42, 185, 42, 54, // American Red
-//     85, 153, 0, 39, // Pink Raspberry
-//     127, 26, 131, 12, // Verse Green
-//     170, 89, 162, 47, // RYB Green
-//     212, 148, 186, 98, // Dollar Bill
-//     255, 223, 97, 101}; // and back to Light Carmine Pink
+    const char* getName() const override { return "off"; }
+};
 
-// CRGBPalette16 christmas1_p = christmas1;
-// CRGBPalette16 christmas2_p = christmas2;
+class SolidEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        leds.fill_solid(lights.firstColor());
+        EffectControl result;
+        result.allowAutoColorChange = true;
+        return result;
+    }
+
+    const char* getName() const override { return "solid"; }
+};
+
+class HorizontalRainbowEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        if (!lights.isColorPalette())
+        {
+            uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
+            leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
+            leds(8, 11).fill_rainbow(hue, rainbowDeltaHue * 2);
+            leds[12] = leds[0];
+        }
+        else
+        {
+            uint8_t startIndex = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
+            uint8_t colorIndex = startIndex;
+            for (uint8_t i = 0; i < 8; ++i)
+            {
+                leds[i] = lights.getPaletteColor(colorIndex);
+                colorIndex += rainbowDeltaHue;
+            }
+            colorIndex = startIndex;
+            for (uint8_t i = 8; i < 12; ++i)
+            {
+                leds[i] = lights.getPaletteColor(colorIndex);
+                colorIndex += rainbowDeltaHue * 2;
+            }
+            leds[12] = leds[0];
+        }
+        return {};
+    }
+
+    const char* getName() const override { return "rainbowHorizontal"; }
+
+private:
+    uint8_t rainbowDeltaHue = 32;
+};
+
+class VerticalRainbowEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        CRGB colors[3];
+        uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
+        if (!lights.isColorPalette())
+        {
+            fill_rainbow(colors, 3, hue, rainbowDeltaHue);
+        }
+        else
+        {
+            colors[0] = lights.getPaletteColor(hue);
+            colors[1] = lights.getPaletteColor(hue + rainbowDeltaHue);
+            colors[2] = lights.getPaletteColor(hue + rainbowDeltaHue * 2);
+        }
+        // Bottom
+        leds(0, 7).fill_solid(colors[0]);
+        // Middle
+        leds(8, 11).fill_solid(colors[1]);
+        // Top
+        leds[12] = colors[2];
+
+        return {};
+    }
+
+    const char* getName() const override { return "rainbowVertical"; }
+
+private:
+    uint8_t rainbowDeltaHue = 32;
+};
+
+class HorizontalGradientEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        EffectControl result;
+        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        if (blendVal >= 512)
+        {
+            // Full gradient complete, transition to next color
+            lights.updateColor();
+            lights.resetEffect();
+            result.fadeOver = false; // do not want to fade here, still same effect
+            blendVal = 0;
+        }
+        uint8_t blendStart = max((int)blendVal - 256, 0);
+        uint8_t blendEnd = min((int)blendVal, 255);
+        CRGB cStart = blend(lights.firstColor(), lights.secondColor(), blendStart);
+        CRGB cMiddle = blend(lights.firstColor(), lights.secondColor(), ((int)blendStart + blendEnd) / 2);
+        CRGB cEnd = blend(lights.firstColor(), lights.secondColor(), blendEnd);
+        leds(0, 7).fill_gradient_RGB(cStart, cEnd);
+        leds(8, 11).fill_gradient_RGB(cStart, cEnd);
+        leds[12] = leds[0];
+
+        return result;
+    }
+
+    const char* getName() const override { return "gradientHorizontal"; }
+};
+
+class VerticalGradientEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        EffectControl result;
+        fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
+        if (blendVal >= 512)
+        {
+            // Full gradient complete, transition to next color
+            lights.updateColor();
+            lights.resetEffect();
+            result.fadeOver = false; // do not want to fade here, still same effect
+            blendVal = 0;
+        }
+        uint8_t blendStart = max((int)blendVal - 256, 0);
+        uint8_t blendEnd = min((int)blendVal, 255);
+        CRGB cStart = blend(lights.firstColor(), lights.secondColor(), blendStart);
+        CRGB cMiddle = blend(lights.firstColor(), lights.secondColor(), ((int)blendStart + blendEnd) / 2);
+        CRGB cEnd = blend(lights.firstColor(), lights.secondColor(), blendEnd);
+        leds(0, 7).fill_solid(cStart);
+        leds(8, 11).fill_solid(cMiddle);
+        leds[12] = cEnd;
+
+        return result;
+    }
+
+    const char* getName() const override { return "gradientVertical"; }
+};
+
+class TwinkleFoxEffect : public IEffect
+{
+public:
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        // From FastLED TwinkleFox example by Mark Kriegsman
+        uint16_t prng16 = 11337;
+        auto nextRandom = [](uint16_t prng) { return (uint16_t)((uint16_t)(prng * 2053) + 1384); };
+        uint32_t clock32 = effectTime;
+        uint8_t backgroundBrightness = bg.getAverageLight();
+
+        for (CRGB& pixel : leds)
+        {
+            prng16 = nextRandom(prng16);
+            uint16_t clockOffset = prng16;
+            prng16 = nextRandom(prng16);
+            uint8_t speedMultiplier = ((((prng16 & 0xFF) >> 4) + (prng16 & 0x0F)) & 0x0F) + 0x08;
+            uint32_t clock = (uint32_t)((clock32 * speedMultiplier) >> 3) + clockOffset;
+            uint8_t uniqueSalt = prng16 >> 8;
+
+            CRGB c = computeTwinkle(lights, clock, uniqueSalt);
+
+            uint8_t cBright = c.getAverageLight();
+            int16_t deltaBright = cBright - backgroundBrightness;
+            if (deltaBright >= 32 || (!bg))
+            {
+                // New pixel is significantly brighter than background
+                pixel = c;
+            }
+            else if (deltaBright > 0)
+            {
+                // Slightly brighter than background, blend
+                pixel = blend(bg, c, deltaBright * 8);
+            }
+            else
+            {
+                // Pixel is not brighter than background
+                pixel = bg;
+            }
+        }
+        EffectControl result;
+        result.allowAutoColorChange = true;
+        return result;
+    }
+    CRGB computeTwinkle(TreeLightView& lights, uint32_t clock, uint8_t salt)
+    {
+        // From FastLED TwinkleFox example by Mark Kriegsman
+
+        uint16_t ticks = clock >> (8 - twinkleSpeed);
+        uint8_t fastCycle = ticks;
+        uint16_t slowCycle = (ticks >> 8) + salt;
+        slowCycle += sin8(slowCycle);
+        slowCycle = (slowCycle * 2053) + 1384;
+        uint8_t slowCycle8 = (slowCycle & 0xFF) + (slowCycle >> 8);
+
+        uint8_t bright = 0;
+        if ((slowCycle8 & 0x0E) / 2 < twinkleDensity)
+        {
+            bright = attackDecayWave8(fastCycle);
+        }
+
+        uint8_t hue = slowCycle8 - salt;
+        CRGB c = CRGB::Black;
+        if (bright > 0)
+        {
+            c = lights.getPaletteColor(hue, false);
+            c.nscale8_video(bright);
+            if (coolIncandescent)
+            {
+                coolLikeIncandescent(c, fastCycle);
+            }
+        }
+        return c;
+    }
+
+    const char* getName() const override { return "twinkleFox"; }
+
+private:
+    uint8_t twinkleSpeed = 4; // 0-8
+    uint8_t twinkleDensity = 5; // 0-8
+    bool coolIncandescent = true; // fade out into red
+    CRGB bg = CRGB::Black; // Background color
+};
+
+class TwoColorChangeEffect : public IEffect
+{
+public:
+    void reset()
+    {
+        colorChangeTime = 0;
+        swapped = false;
+    }
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        unsigned long dt = effectTime - colorChangeTime;
+        uint16_t fadeTime = 1 << (fadeDuration + 8);
+        CRGB first = getColor(lights, false);
+        CRGB second = getColor(lights, true);
+        CRGB c1;
+        CRGB c2;
+        if (dt >= swapTime)
+        {
+            // swap
+            swapped = !swapped;
+            colorChangeTime += swapTime;
+
+            c1 = second;
+            c2 = first;
+        }
+        else if (dt >= swapTime - fadeTime)
+        {
+            // fade
+            fract8 fade = (dt - (swapTime - fadeTime)) >> 1;
+            fade = ease8InOutCubic(fade);
+            c1 = blend(first, second, fade);
+            c2 = blend(second, first, fade);
+        }
+        else
+        {
+            c1 = first;
+            c2 = second;
+        }
+        for (uint8_t i = 0; i < leds.size(); ++i)
+        {
+            if ((i & 1) == 0)
+            {
+                leds[i] = c1;
+            }
+            else
+            {
+                leds[i] = c2;
+            }
+        }
+        EffectControl result;
+        result.allowAutoColorChange = true;
+        return result;
+    }
+
+    CRGB getColor(TreeLightView& lights, bool second)
+    {
+        return (swapped == second) ? lights.firstColor() : lights.secondColor();
+    }
+
+    const char* getName() const override { return "twoColorChange"; }
+
+private:
+    unsigned long colorChangeTime = 0;
+    uint16_t swapTime = 2000;
+    uint8_t fadeDuration = 1; // 1<<(fadeSpeed+8) must be less than swapTime
+    bool swapped = false;
+};
+
+class RunningLightEffect : public IEffect
+{
+public:
+    void reset() { colorChangeTime = 0; }
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        EffectControl result;
+        uint8_t numLeds = leds.size();
+        const uint8_t lightCount = 4; // max number of lit leds
+        uint8_t nLights = (uint8_t)(effectTime - colorChangeTime >> 9); // effectTime / 512 => about 4 leds per second
+        uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 0) & 0x1FF;
+        leds.fill_solid(CRGB::Black);
+        if (nLights >= numLeds + lightCount)
+        {
+            nLights = 0;
+            colorChangeTime += (unsigned long)(numLeds + lightCount) << 9;
+        }
+        if (nLights > 0)
+        {
+            int end = min((int)numLeds - nLights + lightCount - 1, (int)numLeds);
+
+            if (end != numLeds)
+            {
+                // Last led can fade out
+                // 256 <= fade < 512: fade out end
+                fract8 fadeOut = 255 - max((int)fade - 256, 0);
+                fadeOut = ease8InOutCubic(fadeOut);
+                CRGB cEnd = lights.firstColor();
+                cEnd.nscale8_video(fadeOut);
+                leds[end] = cEnd;
+            }
+            // Last led is out of bounds or set above
+            --end;
+
+            int start = max((int)numLeds - nLights, -1);
+            if (start != -1)
+            {
+                // First led can fade in
+                // 0 <= fade < 256: fade in start
+                fract8 fadeIn = min(fade, (uint16_t)255);
+                fadeIn = ease8InOutCubic(fadeIn);
+                CRGB cStart = lights.firstColor();
+                cStart.nscale8_video(fadeIn);
+                leds[start] = cStart;
+            }
+            // First led is out of bounds or set above
+            ++start;
+
+            if (end >= 0 && start < numLeds)
+            {
+                leds(start, end).fill_solid(lights.firstColor());
+            }
+        }
+        else
+        {
+            // Only change color when currently empty
+            result.allowAutoColorChange = true;
+        }
+        return result;
+    }
+    const char* getName() const override { return "runningLight"; }
+
+private:
+    unsigned long colorChangeTime = 0;
+};
+
+IEffect** createEffects()
+{
+    static OffEffect off;
+    static SolidEffect solid;
+    static TwoColorChangeEffect twoColor;
+    static HorizontalGradientEffect gradientHorizontal;
+    static VerticalGradientEffect gradientVertical;
+    static HorizontalRainbowEffect rainbowHorizontal;
+    static VerticalRainbowEffect rainbowVertical;
+    static RunningLightEffect runningLight;
+    static TwinkleFoxEffect twinkleFox;
+    static IEffect* e[(int)EffectType::maxValue] = {&off, &solid, &twoColor, &gradientHorizontal, &gradientVertical,
+        &rainbowHorizontal, &rainbowVertical, &runningLight, &twinkleFox};
+    return e;
+}
 
 void TreeLight::init(Menu& menu)
 {
     this->menu = &menu;
+    effectList = createEffects();
+    currentEffect = effectList[0];
+    currentEffect->reset();
 #if defined(ESP32) || defined(ESP8266)
     FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
 #else
@@ -164,25 +531,27 @@ void TreeLight::getStatusJsonString(JsonObject& output)
     JsonArray effects = lights.createNestedArray("effects");
     for (size_t i = 0; i < (size_t)EffectType::maxValue; i++)
     {
-        effects.add(TreeLight::effect_names[i]);
+        effects.add(effectList[i]->getName());
     }
 }
 
 void TreeLight::nextEffect()
 {
-    currentEffect = (EffectType)((int)currentEffect + 1);
-    if (currentEffect >= EffectType::maxValue)
+    currentEffectType = (EffectType)((int)currentEffectType + 1);
+    if (currentEffectType >= EffectType::maxValue)
     {
-        currentEffect = (EffectType)0;
+        currentEffectType = (EffectType)0;
     }
+    currentEffect = effectList[(int)currentEffectType];
     resetEffect();
 }
 
 void TreeLight::setEffect(EffectType e)
 {
-    if (e != currentEffect && e < EffectType::maxValue)
+    if (e != currentEffectType && e < EffectType::maxValue)
     {
-        currentEffect = e;
+        currentEffectType = e;
+        currentEffect = effectList[(int)e];
         resetEffect();
     }
 }
@@ -239,9 +608,12 @@ void TreeLight::update()
 void TreeLight::resetEffect()
 {
     effectTime = 0;
-    colorChangeTime = 0;
     // Save last effect colors
     ledBackup = leds;
+    if (currentEffect)
+    {
+        currentEffect->reset();
+    }
 }
 
 void TreeLight::setBrightnessLevel(uint8_t level)
@@ -307,50 +679,15 @@ void TreeLight::runEffect()
 {
     const unsigned int colorDuration = 60000;
     const unsigned int startFadeIn = 2000;
-    bool doColorUpdate = false;
-    bool doFadeIn = true;
+    IEffect::EffectControl c;
 
-    switch (currentEffect)
+    TreeLightView v(*this);
+    if (currentEffect != nullptr)
     {
-    case EffectType::off:
-        leds.fill_solid(CRGB::Black);
-        break;
-    case EffectType::solid:
-        leds.fill_solid(currentColor);
-        doColorUpdate = true;
-        break;
-    case EffectType::twoColorChange: {
-        effectTwoColorChange();
-        doColorUpdate = true;
-        break;
+        c = currentEffect->runEffect(v, leds, effectTime);
     }
-    case EffectType::gradientHorizontal: {
-        effectGradientHorizontal(doFadeIn);
-        break;
-    }
-    case EffectType::gradientVertical: {
-        effectGradientVertical(doFadeIn);
-        break;
-    }
-    case EffectType::rainbowHorizontal: {
-        effectRainbowHorizontal();
-        break;
-    }
-    case EffectType::rainbowVertical: {
-        effectRainbowVertical();
-        break;
-    }
-    case EffectType::runningLight: {
-        doColorUpdate = effectRunningLight();
-        break;
-    }
-    case EffectType::twinkleFox: {
-        effectTwinkleFox();
-        doColorUpdate = true;
-        break;
-    }
-    }
-    if (speed > 0 && doFadeIn && effectTime < startFadeIn)
+
+    if (speed > 0 && c.fadeOver && effectTime < startFadeIn)
     {
         // TODO: does not work when speed = 0
         // Scale 0 to startFadeIn
@@ -358,272 +695,12 @@ void TreeLight::runEffect()
         fade = ease8InOutCubic(fade);
         leds.nblend(ledBackup, fade);
     }
-    else if (doColorUpdate && effectTime > colorDuration)
+    else if (c.allowAutoColorChange && effectTime > colorDuration)
     {
         // 30 seconds at normal speed
         resetEffect();
         updateColor();
     }
-}
-
-void TreeLight::effectGradientVertical(bool& doFadeIn)
-{
-    // Gradient between color and color2
-    fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
-    if (blendVal >= 512)
-    {
-        // Full gradient complete, transition to next color
-        updateColor();
-        resetEffect();
-        doFadeIn = false; // do not want to fade here, still same effect
-        blendVal = 0;
-    }
-    uint8_t blendStart = max((int)blendVal - 256, 0);
-    uint8_t blendEnd = min((int)blendVal, 255);
-    CRGB cStart = blend(currentColor, color2, blendStart);
-    CRGB cMiddle = blend(currentColor, color2, ((int)blendStart + blendEnd) / 2);
-    CRGB cEnd = blend(currentColor, color2, blendEnd);
-    leds(0, 7).fill_solid(cStart);
-    leds(8, 11).fill_solid(cMiddle);
-    leds[12] = cEnd;
-}
-
-void TreeLight::effectRainbowHorizontal()
-{
-    const uint8_t rainbowDeltaHue = 32;
-    if (!isColorPalette())
-    {
-        uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
-        leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
-        leds(8, 11).fill_rainbow(hue, rainbowDeltaHue * 2);
-        leds[12] = leds[0];
-    }
-    else
-    {
-        uint8_t startIndex = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
-        uint8_t colorIndex = startIndex;
-        for (uint8_t i = 0; i < 8; ++i)
-        {
-            leds[i] = getPaletteColor(colorIndex);
-            colorIndex += rainbowDeltaHue;
-        }
-        colorIndex = startIndex;
-        for (uint8_t i = 8; i < 12; ++i)
-        {
-            leds[i] = getPaletteColor(colorIndex);
-            colorIndex += rainbowDeltaHue * 2;
-        }
-        leds[12] = leds[0];
-    }
-}
-
-void TreeLight::effectRainbowVertical()
-{
-    const uint8_t rainbowDeltaHue = 32;
-    CRGB colors[3];
-    uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
-    if (!isColorPalette())
-    {
-        fill_rainbow(colors, 3, hue, rainbowDeltaHue);
-    }
-    else
-    {
-        colors[0] = getPaletteColor(hue);
-        colors[1] = getPaletteColor(hue + rainbowDeltaHue);
-        colors[2] = getPaletteColor(hue + rainbowDeltaHue * 2);
-    }
-    // Bottom
-    leds(0, 7).fill_solid(colors[0]);
-    // Middle
-    leds(8, 11).fill_solid(colors[1]);
-    // Top
-    leds[12] = colors[2];
-}
-
-void TreeLight::effectTwinkleFox()
-{
-    // From FastLED TwinkleFox example by Mark Kriegsman
-    uint16_t prng16 = 11337;
-    auto nextRandom = [](uint16_t prng) { return (uint16_t)((uint16_t)(prng * 2053) + 1384); };
-    uint32_t clock32 = effectTime;
-    CRGB bg = CRGB::Black; // Background color
-    uint8_t backgroundBrightness = bg.getAverageLight();
-
-    for (CRGB& pixel : leds)
-    {
-        prng16 = nextRandom(prng16);
-        uint16_t clockOffset = prng16;
-        prng16 = nextRandom(prng16);
-        uint8_t speedMultiplier = ((((prng16 & 0xFF) >> 4) + (prng16 & 0x0F)) & 0x0F) + 0x08;
-        uint32_t clock = (uint32_t)((clock32 * speedMultiplier) >> 3) + clockOffset;
-        uint8_t uniqueSalt = prng16 >> 8;
-
-        CRGB c = computeTwinkle(clock, uniqueSalt);
-
-        uint8_t cBright = c.getAverageLight();
-        int16_t deltaBright = cBright - backgroundBrightness;
-        if (deltaBright >= 32 || (!bg))
-        {
-            // New pixel is significantly brighter than background
-            pixel = c;
-        }
-        else if (deltaBright > 0)
-        {
-            // Slightly brighter than background, blend
-            pixel = blend(bg, c, deltaBright * 8);
-        }
-        else
-        {
-            // Pixel is not brighter than background
-            pixel = bg;
-        }
-    }
-}
-
-CRGB TreeLight::computeTwinkle(uint32_t clock, uint8_t salt)
-{
-    // From FastLED TwinkleFox example by Mark Kriegsman
-    const uint8_t twinkleSpeed = 4; // 0-8
-    const uint8_t twinkleDensity = 5; // 0-8
-    const bool coolIncandescent = true; // fade out into red
-
-    uint16_t ticks = clock >> (8 - twinkleSpeed);
-    uint8_t fastCycle = ticks;
-    uint16_t slowCycle = (ticks >> 8) + salt;
-    slowCycle += sin8(slowCycle);
-    slowCycle = (slowCycle * 2053) + 1384;
-    uint8_t slowCycle8 = (slowCycle & 0xFF) + (slowCycle >> 8);
-
-    uint8_t bright = 0;
-    if ((slowCycle8 & 0x0E) / 2 < twinkleDensity)
-    {
-        bright = attackDecayWave8(fastCycle);
-    }
-
-    uint8_t hue = slowCycle8 - salt;
-    CRGB c = CRGB::Black;
-    if (bright > 0)
-    {
-        c = getPaletteColor(hue, false);
-        c.nscale8_video(bright);
-        if (coolIncandescent)
-        {
-            coolLikeIncandescent(c, fastCycle);
-        }
-    }
-    return c;
-}
-
-void TreeLight::effectGradientHorizontal(bool& doFadeIn)
-{
-    // Gradient between color and color2
-    fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
-    if (blendVal >= 512)
-    {
-        // Full gradient complete, transition to next color
-        updateColor();
-        resetEffect();
-        doFadeIn = false; // do not want to fade in here, still same effect
-        blendVal = 0;
-    }
-    uint8_t blendStart = max((int)blendVal - 256, 0);
-    uint8_t blendEnd = min((int)blendVal, 255);
-    CRGB cStart = blend(currentColor, color2, blendStart);
-    CRGB cEnd = blend(currentColor, color2, blendEnd);
-    leds(0, 7).fill_gradient_RGB(cStart, cEnd);
-    leds(8, 11).fill_gradient_RGB(cStart, cEnd);
-    leds[12] = leds[0];
-}
-
-void TreeLight::effectTwoColorChange()
-{
-    unsigned long dt = effectTime - colorChangeTime;
-    CRGB c1 = currentColor;
-    CRGB c2 = color2;
-    if (dt >= 2000)
-    {
-        // swap
-        color2 = c1;
-        currentColor = c2;
-        colorChangeTime += 2000;
-        c1 = currentColor;
-        c2 = color2;
-    }
-    else if (dt >= 2000 - 512)
-    {
-        // fade
-        fract8 fade = (dt - (2000 - 512)) >> 1;
-        fade = ease8InOutCubic(fade);
-        c1 = blend(currentColor, color2, fade);
-        c2 = blend(color2, currentColor, fade);
-    }
-    for (uint8_t i = 0; i < numLeds; ++i)
-    {
-        if ((i & 1) == 0)
-        {
-            leds[i] = c1;
-        }
-        else
-        {
-            leds[i] = c2;
-        }
-    }
-}
-
-bool TreeLight::effectRunningLight()
-{
-    bool doColorUpdate = false;
-    const uint8_t lightCount = 4; // max number of lit leds
-    uint8_t nLights = (uint8_t)(effectTime - colorChangeTime >> 9); // effectTime / 512 => about 4 leds per second
-    uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 0) & 0x1FF;
-    leds.fill_solid(CRGB::Black);
-    if (nLights >= numLeds + lightCount)
-    {
-        nLights = 0;
-        colorChangeTime += (unsigned long)(numLeds + lightCount) << 9;
-    }
-    if (nLights > 0)
-    {
-        int end = min((int)numLeds - nLights + lightCount - 1, (int)numLeds);
-
-        if (end != numLeds)
-        {
-            // Last led can fade out
-            // 256 <= fade < 512: fade out end
-            fract8 fadeOut = 255 - max((int)fade - 256, 0);
-            fadeOut = ease8InOutCubic(fadeOut);
-            CRGB cEnd = currentColor;
-            cEnd.nscale8_video(fadeOut);
-            leds[end] = cEnd;
-        }
-        // Last led is out of bounds or set above
-        --end;
-
-        int start = max((int)numLeds - nLights, -1);
-        if (start != -1)
-        {
-            // First led can fade in
-            // 0 <= fade < 256: fade in start
-            fract8 fadeIn = min(fade, (uint16_t)255);
-            fadeIn = ease8InOutCubic(fadeIn);
-            CRGB cStart = currentColor;
-            cStart.nscale8_video(fadeIn);
-            leds[start] = cStart;
-        }
-        // First led is out of bounds or set above
-        ++start;
-
-        if (end >= 0 && start < numLeds)
-        {
-            leds(start, end).fill_solid(currentColor);
-        }
-    }
-    else
-    {
-        // Only change color when currently empty
-        doColorUpdate = true;
-    }
-    return doColorUpdate;
 }
 
 void TreeLight::displayMenu()

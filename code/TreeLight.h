@@ -26,7 +26,6 @@
 // - Indicate Wifi on/off when option is selected (different fading animations)
 // - Color selection first option in menu, because it is changed more often than brightness
 
-
 enum class EffectType
 {
     off,
@@ -50,16 +49,35 @@ enum class Speed
     maxValue // Not a speed
 };
 
+class IEffect
+{
+public:
+    struct EffectControl
+    {
+        bool allowAutoColorChange = false; // Color can change after this effect pass
+        bool fadeOver = true; // Fade over from color of last effect to current effect color
+    };
+
+public:
+    virtual ~IEffect() = default;
+
+    virtual void reset() {};
+    virtual EffectControl runEffect(class TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) = 0;
+    virtual const char* getName() const = 0;
+};
+
 class TreeLight
 {
 public:
+    friend class TreeLightView;
+
     void init(Menu& menu);
     void getStatusJsonString(JsonObject& output);
     static const char* effect_names[];
 
     void nextEffect();
     void setEffect(EffectType e);
-    EffectType getEffect() const { return currentEffect; }
+    EffectType getEffect() const { return currentEffectType; }
     void nextSpeed();
     void setSpeed(Speed s);
     uint8_t getSpeed() const { return speed; }
@@ -104,15 +122,6 @@ private:
     bool isColorPalette() const;
     CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const;
 
-    void effectTwoColorChange();
-    bool effectRunningLight();
-    void effectGradientHorizontal(bool& doFadeIn);
-    void effectGradientVertical(bool& doFadeIn);
-    void effectRainbowHorizontal();
-    void effectRainbowVertical();
-    void effectTwinkleFox();
-    CRGB computeTwinkle(uint32_t clock, uint8_t salt);
-
     // returns nullptr if selection is not a palette
     static TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
 
@@ -122,15 +131,33 @@ private:
     CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;
     unsigned long lastUpdate = 0;
-    EffectType currentEffect = EffectType::off;
+    EffectType currentEffectType = EffectType::off;
+    IEffect* currentEffect = nullptr;
+    IEffect** effectList;
     CRGB currentColor = CRGB(0, 0xA0, 0xFF);
     CRGB color2 = CRGB(0, 0x40, 0xFF);
     CRGBPalette16 currentPalette {CRGB::Black};
-    unsigned long colorChangeTime = 0;
     uint8_t speed = 2;
     uint8_t brightnessLevel = 4;
     unsigned long menuTime = 0;
     uint8_t colorSelection = 0;
+};
+
+class TreeLightView
+{
+public:
+    TreeLightView(TreeLight& light) : l(&light) { }
+
+    void resetEffect() { l->resetEffect(); }
+    void updateColor() { l->updateColor(); }
+    CRGB firstColor() const { return l->currentColor; }
+    CRGB secondColor() const { return l->color2; }
+    bool isColorPalette() const { return l->isColorPalette(); }
+
+    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const { return l->getPaletteColor(mix, doBlend); }
+
+private:
+    TreeLight* l;
 };
 
 #endif

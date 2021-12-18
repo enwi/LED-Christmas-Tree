@@ -103,7 +103,7 @@ void setup()
     light.init(menu);
 #ifdef DEBUG_PRINT
     Serial.begin(57600);
-    DEBUGLN("Hello world");
+    DEBUGLN("Debug output enabled");
 #endif
 
     pinMode(buttonPin, INPUT);

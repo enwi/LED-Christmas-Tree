@@ -3,13 +3,7 @@ name: test
 
 # Here we tell GitHub to run the workflow when a commit
 # is pushed or a Pull Request is opened.
-on:
-  push:
-    tags-ignore:
-      - "*.*.*"
-  pull_request:
-    tags-ignore:
-      - "*.*.*"
+on: [push, pull_request]
 
 # This is the list of jobs that will be run concurrently.
 # Since we use a build matrix, the actual number of jobs

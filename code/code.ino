@@ -151,7 +151,9 @@ void loop()
     light.update();
     delay(1);
 
+#if defined(ESP8266) || defined(ESP32)
     EVERY_N_SECONDS(1) { Networking::update(); }
+#endif
 
 #ifdef DEBUG_PRINT
     unsigned long t = millis();

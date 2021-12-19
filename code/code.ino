@@ -28,7 +28,6 @@ Menu menu;
 #include "Mqtt.h"
 #include "Networking.h"
 
-
 AsyncWebServer server(80); /// Webserver for OTA
 
 void init_networking()
@@ -151,6 +150,8 @@ void loop()
     // 3.
     light.update();
     delay(1);
+
+    EVERY_N_SECONDS(1) { Networking::update(); }
 
 #ifdef DEBUG_PRINT
     unsigned long t = millis();

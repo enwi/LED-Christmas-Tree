@@ -3,6 +3,7 @@
 
 const IPAddress Networking::AP_IP = {192, 168, 4, 1};
 const IPAddress Networking::AP_NETMASK = {255, 255, 255, 0};
+DNSServer Networking::dnsServer = {};
 
 void Networking::initWifi()
 {
@@ -27,7 +28,6 @@ void Networking::initWifi()
         WiFi.mode(WIFI_STA);
     }
 
-    WiFi.mode(WIFI_STA);
     if (client_enabled)
     {
         DEBUGLN("Using wifi in client mode");
@@ -91,13 +91,24 @@ void Networking::initWifi()
         if (psk.length() == 0)
         {
             WiFi.softAP(ssid);
-            DEBUGLN("Sarting open AP");
+            DEBUGLN("Starting open AP");
         }
         else
         {
             WiFi.softAP(ssid, psk);
-            DEBUGLN("Sarting protected AP");
+            DEBUGLN("Starting protected AP");
         }
+
+        // captive portal
+        DEBUGLN("Starting DNS server");
+        dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+        dnsServer.start(53, "*", WiFi.softAPIP());
+    }
+    else
+    {
+        // captive portal
+        DEBUGLN("Stopping DNS server");
+        dnsServer.stop();
     }
 }
 
@@ -123,6 +134,14 @@ void Networking::initServer(AsyncWebServer* server, TreeLight* light)
     server->on("/", HTTP_GET, Networking::handleIndex);
     server->on("/home", HTTP_GET, Networking::handleIndex);
     server->on("/config", HTTP_GET, Networking::handleIndex);
+
+    // captive portal
+    auto handleCaptivePortal = [](AsyncWebServerRequest* request) { captivePortal(request); };
+    // Android captive portal. Maybe not needed. Might be handled by notFound handler.
+    server->on("/generate_204", HTTP_GET, handleCaptivePortal);
+    // Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
+    server->on("/fwlink", HTTP_GET, handleCaptivePortal);
+    server->onNotFound(handleCaptivePortal);
 
     server->begin();
 }
@@ -276,6 +295,52 @@ void Networking::handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* j
     light->setEffect(static_cast<EffectType>((uint8_t)data["effect"]));
     response->print("OK");
     request->send(response);
+}
+
+bool Networking::isIp(const String& str)
+{
+    for (size_t i = 0; i < str.length(); i++)
+    {
+        int c = str.charAt(i);
+        if (c != '.' && (c < '0' || c > '9'))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void Networking::update()
+{
+    // handle DNS
+    dnsServer.processNextRequest();
+}
+
+bool Networking::captivePortal(AsyncWebServerRequest* request)
+{
+    if (ON_STA_FILTER(request))
+    {
+        // DEBUGLN(F("Captive STA Filter"));
+        return false; // only serve captive portal in AP mode
+    }
+    if (!request->hasHeader("Host"))
+    {
+        // DEBUGLN(F("Captive Host header missing"));
+        return false;
+    }
+    const String hostHeader = request->getHeader("Host")->value();
+    if (isIp(hostHeader) || hostHeader.indexOf(HOSTNAME) >= 0)
+    {
+        // DEBUG(F("Captive Host Filter: "));
+        // DEBUGLN(hostHeader);
+        return false;
+    }
+
+    DEBUGLN(F("Captive portal"));
+    AsyncWebServerResponse* response = request->beginResponse(302);
+    response->addHeader(F("Location"), F("http://192.168.4.1"));
+    request->send(response);
+    return true;
 }
 
 #endif

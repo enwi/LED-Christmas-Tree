@@ -6,7 +6,7 @@ name: release
 on:
   push:
     tags:
-      - "*.*.*"
+      - '*.*.*'
 
 # This is the list of jobs that will be run concurrently.
 # Since we use a build matrix, the actual number of jobs

@@ -2,6 +2,7 @@
 
 #include <ArduinoJson.h>
 #include <AsyncJson.h>
+#include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
 
 #include "Config.h"
@@ -59,7 +60,28 @@ public:
     ///@param request Request coming from webserver
     static void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light);
 
+    /// @brief Check if the given string is an ip address
+    ///
+    /// @param str String to check
+    /// @return true If the string is an ip
+    /// @return false If the string is not an ip
+    static bool isIp(const String& str);
+
+    ///@brief Update DNS and other networking stuff
+    ///
+    /// Should be called once every second
+    static void update();
+
+private:
+    /// @brief Callback used for captive portal webserver
+    ///
+    /// @param request Request to check and handle captive portal for
+    /// @return true If not handling captive portal
+    /// @return false If handling captive portal
+    static bool captivePortal(AsyncWebServerRequest* request);
+
 private:
     static const IPAddress AP_IP;
     static const IPAddress AP_NETMASK;
+    static DNSServer dnsServer;
 }; // namespace Networking

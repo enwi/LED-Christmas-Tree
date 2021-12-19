@@ -45,7 +45,9 @@ public:
     static void handleIndex(AsyncWebServerRequest* request);
 
     ///@brief Handle the status api
-    ///@param request Request coming from webserver
+    ///
+    ///@param request  Request coming from webserver
+    ///@param light TreeLight to control
     static void handleStatusApi(AsyncWebServerRequest* request, TreeLight* light);
 
     ///@brief Handle the config GET api
@@ -53,11 +55,16 @@ public:
     static void handleConfigApiGet(AsyncWebServerRequest* request);
 
     ///@brief Handle the config POST api
+    ///
     ///@param request Request coming from webserver
+    ///@param json JSON object containing configuration of wifi, mqtt, etc.
     static void handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant* json);
 
     ///@brief Handle the set leds api
+    ///
     ///@param request Request coming from webserver
+    ///@param json JSON object containing values of brightness, speed, effect, etc.
+    ///@param light TreeLight to control
     static void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light);
 
     /// @brief Check if the given string is an ip address
@@ -83,5 +90,5 @@ private:
 private:
     static const IPAddress AP_IP;
     static const IPAddress AP_NETMASK;
-    static DNSServer dnsServer;
+    static DNSServer dnsServer; // DNS server for captive portal
 }; // namespace Networking

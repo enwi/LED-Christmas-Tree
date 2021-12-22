@@ -10,8 +10,6 @@
 #include "Mqtt.h"
 #include "TreeLight.h"
 
-#include "webui/cpp/build.html.gz.h"
-
 #if defined(ESP32)
 #include <Update.h>
 #else

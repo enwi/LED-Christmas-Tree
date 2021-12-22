@@ -1,6 +1,8 @@
 #if defined(ESP8266) || defined(ESP32)
 #include "Networking.h"
 
+#include "webui/cpp/build.html.gz.h"
+
 const IPAddress Networking::AP_IP = {192, 168, 4, 1};
 const IPAddress Networking::AP_NETMASK = {255, 255, 255, 0};
 DNSServer Networking::dnsServer = {};

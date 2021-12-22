@@ -29,10 +29,7 @@ void Config::initConfig()
                 }
                 else
                 {
-#ifdef DEBUG_PRINT
-                    serializeJson(*config, Serial);
-#endif
-                    DEBUGLN("");
+                    DEBUGLN(F("Successfully loaded config file"));
                 }
             }
         }

@@ -162,7 +162,17 @@ void loop()
         printTime = t;
         DEBUG(t / 1000);
         DEBUG(" - Current effect ");
-        DEBUG((int)light.getEffect());
+        DEBUG((int)light.getEffectType());
+        IEffect* e = light.getEffect();
+        DEBUG(" ");
+        if (e)
+        {
+            DEBUG(e->getName());
+        }
+        else
+        {
+            DEBUG("NULL");
+        }
         DEBUG(", FPS: ");
         DEBUGLN(FastLED.getFPS());
     }

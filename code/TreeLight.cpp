@@ -72,9 +72,9 @@ namespace
     }
 } // namespace
 
-TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
+const TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
 {
-    static TProgmemRGBPalette16* palettes[] = {nullptr, // harmonic colors
+    static const TProgmemRGBPalette16* palettes[] = {nullptr, // harmonic colors
         nullptr, //
         nullptr, //
         &Holly_p, //
@@ -344,7 +344,7 @@ private:
 class TwoColorChangeEffect : public IEffect
 {
 public:
-    void reset()
+    void reset(bool timerOnly)
     {
         colorChangeTime = 0;
         swapped = false;
@@ -412,7 +412,7 @@ private:
 class RunningLightEffect : public IEffect
 {
 public:
-    void reset() { colorChangeTime = 0; }
+    void reset(bool timerOnly) { colorChangeTime = 0; }
     EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
     {
         EffectControl result;
@@ -475,6 +475,122 @@ private:
     unsigned long colorChangeTime = 0;
 };
 
+template <uint8_t N>
+class CyclingEffect : public IEffect
+{
+public:
+    CyclingEffect<N>()
+    {
+        for (uint8_t i = 0; i < N; ++i)
+        {
+            effectList[i] = nullptr;
+            effectCycles[i] = 1;
+        }
+    }
+
+    void setEffect(uint8_t idx, IEffect* e)
+    {
+        if (idx < N)
+        {
+            effectList[idx] = e;
+        }
+    }
+    void setEffects(IEffect* const* effects, uint8_t num, uint8_t start = 0)
+    {
+        uint8_t max = start + num;
+        if (max > N)
+        {
+            max = N;
+        }
+        for (uint8_t i = start; i < max; ++i)
+        {
+            effectList[i] = *effects;
+            ++effects;
+        }
+    }
+    void setEffectCycles(uint8_t idx, uint8_t numCycles)
+    {
+        if (idx < N)
+        {
+            effectCycles[idx] = numCycles;
+        }
+    }
+
+    void reset(bool timerOnly) override
+    {
+        if (timerOnly)
+        {
+            // this is called after every color change, so do not reset but update the effect
+            ++effectColors;
+            if (effectColors >= effectCycles[effectIdx])
+            {
+                nextEffect();
+            }
+            else
+            {
+                IEffect* e = effectList[effectIdx];
+                if (e)
+                {
+                    e->reset(true);
+                }
+            }
+        }
+        else
+        {
+            effectIdx = 0;
+            effectColors = 0;
+            IEffect* e = effectList[effectIdx];
+            if (e)
+            {
+                e->reset(false);
+            }
+        }
+    }
+    void nextEffect()
+    {
+        effectColors = 0;
+        ++effectIdx;
+        if (effectIdx >= N)
+        {
+            effectIdx = 0;
+        }
+        IEffect* e = effectList[effectIdx];
+        if (e)
+        {
+            e->reset(false);
+        }
+    }
+
+    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    {
+        IEffect* e = effectList[effectIdx];
+        EffectControl result;
+        if (e)
+        {
+            result = e->runEffect(lights, leds, effectTime);
+            if (effectTime >= maxEffectTime)
+            {
+                // Effects that do not cycle by themselves
+                lights.resetEffect(true);
+            }
+        }
+        else
+        {
+            nextEffect();
+        }
+        return result;
+    }
+
+    const char* getName() const override { return "cycling"; }
+
+private:
+    IEffect* effectList[N];
+    unsigned long maxEffectTime = 60000;
+    uint8_t effectCycles[N];
+    uint8_t effectColors = 0;
+    uint8_t effectIdx = 0;
+};
+
 IEffect** createEffects()
 {
     static OffEffect off;
@@ -486,8 +602,12 @@ IEffect** createEffects()
     static VerticalRainbowEffect rainbowVertical;
     static RunningLightEffect runningLight;
     static TwinkleFoxEffect twinkleFox;
+    static CyclingEffect<(uint8_t)EffectType::maxValue - 2> cycling;
     static IEffect* e[(int)EffectType::maxValue] = {&off, &solid, &twoColor, &gradientHorizontal, &gradientVertical,
-        &rainbowHorizontal, &rainbowVertical, &runningLight, &twinkleFox};
+        &rainbowHorizontal, &rainbowVertical, &runningLight, &twinkleFox, &cycling};
+    cycling.setEffects(e + 1, (uint8_t)EffectType::maxValue - 2);
+    cycling.setEffectCycles((uint8_t)EffectType::gradientHorizontal - 1, 4);
+    cycling.setEffectCycles((uint8_t)EffectType::gradientVertical - 1, 4);
     return e;
 }
 
@@ -496,7 +616,7 @@ void TreeLight::init(Menu& menu)
     this->menu = &menu;
     effectList = createEffects();
     currentEffect = effectList[0];
-    currentEffect->reset();
+    currentEffect->reset(false);
 #if defined(ESP32) || defined(ESP8266)
     FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
 #else
@@ -527,7 +647,7 @@ void TreeLight::getStatusJsonString(JsonObject& output)
     auto&& lights = output.createNestedObject("lights");
     lights["brightness"] = getBrightnessLevel();
     lights["speed"] = getSpeed();
-    lights["effect"] = (int)getEffect();
+    lights["effect"] = (int)getEffectType();
     JsonArray effects = lights.createNestedArray("effects");
     for (size_t i = 0; i < (size_t)EffectType::maxValue; i++)
     {
@@ -543,7 +663,7 @@ void TreeLight::nextEffect()
         currentEffectType = (EffectType)0;
     }
     currentEffect = effectList[(int)currentEffectType];
-    resetEffect();
+    resetEffect(false);
 }
 
 void TreeLight::setEffect(EffectType e)
@@ -552,27 +672,28 @@ void TreeLight::setEffect(EffectType e)
     {
         currentEffectType = e;
         currentEffect = effectList[(int)e];
-        resetEffect();
+        resetEffect(false);
     }
 }
 
 void TreeLight::nextSpeed()
 {
-    switch (speed)
+    // Web interface speed may be different from these stages
+    if (speed <= (uint8_t)Speed::stopped)
     {
-    case (uint8_t)Speed::stopped:
         speed = (uint8_t)Speed::slow;
-        break;
-    case (uint8_t)Speed::slow:
+    }
+    else if (speed <= (uint8_t)Speed::slow)
+    {
         speed = (uint8_t)Speed::medium;
-        break;
-    case (uint8_t)Speed::medium:
+    }
+    else if (speed <= (uint8_t)Speed::medium)
+    {
         speed = (uint8_t)Speed::fast;
-        break;
-    // case (uint8_t)Speed::fast:
-    default:
+    }
+    else
+    {
         speed = (uint8_t)Speed::stopped;
-        break;
     }
 }
 
@@ -605,14 +726,14 @@ void TreeLight::update()
     FastLED.show();
 }
 
-void TreeLight::resetEffect()
+void TreeLight::resetEffect(bool timerOnly)
 {
     effectTime = 0;
     // Save last effect colors
     ledBackup = leds;
     if (currentEffect)
     {
-        currentEffect->reset();
+        currentEffect->reset(timerOnly);
     }
 }
 
@@ -662,7 +783,7 @@ void TreeLight::setColorSelection(uint8_t index)
 {
     if (index != colorSelection)
     {
-        TProgmemRGBPalette16* palette = getPaletteSelection(index);
+        const TProgmemRGBPalette16* palette = getPaletteSelection(index);
         if (palette != nullptr)
         {
             currentPalette = *palette;
@@ -847,7 +968,7 @@ CRGB TreeLight::getPaletteColor(uint8_t mix, bool doBlend) const
 {
     if (isColorPalette())
     {
-        color2 = ColorFromPalette(currentPalette, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
+        return ColorFromPalette(currentPalette, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
     }
     else
     {

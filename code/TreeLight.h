@@ -26,6 +26,7 @@
 // - Indicate Wifi on/off when option is selected (different fading animations)
 // - Color selection first option in menu, because it is changed more often than brightness
 
+// These effect types have to match the order in createEffects() in the cpp file
 enum class EffectType
 {
     off,
@@ -37,6 +38,7 @@ enum class EffectType
     rainbowVertical,
     runningLight,
     twinkleFox,
+    cycling,
     maxValue // Not an effect, number of valid effects
 };
 
@@ -61,7 +63,7 @@ public:
 public:
     virtual ~IEffect() = default;
 
-    virtual void reset() {};
+    virtual void reset(bool timerOnly) {}; // timerOnly is true when effectTime was reset, false for a full effect reset
     virtual EffectControl runEffect(class TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) = 0;
     virtual const char* getName() const = 0;
 };
@@ -77,7 +79,8 @@ public:
 
     void nextEffect();
     void setEffect(EffectType e);
-    EffectType getEffect() const { return currentEffectType; }
+    EffectType getEffectType() const { return currentEffectType; }
+    IEffect* getEffect() const { return currentEffect; }
     void nextSpeed();
     void setSpeed(Speed s);
     uint8_t getSpeed() const { return speed; }
@@ -91,7 +94,7 @@ public:
         leds[led] = color;
         FastLED.show();
     }
-    void resetEffect();
+    void resetEffect(bool timerOnly = true);
     void setBrightnessLevel(uint8_t level);
     uint8_t getBrightnessLevel() const { return brightnessLevel; }
 
@@ -123,7 +126,7 @@ private:
     CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const;
 
     // returns nullptr if selection is not a palette
-    static TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
+    static const TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
 
 private:
     Menu* menu;
@@ -148,7 +151,7 @@ class TreeLightView
 public:
     TreeLightView(TreeLight& light) : l(&light) { }
 
-    void resetEffect() { l->resetEffect(); }
+    void resetEffect(bool timerOnly = true) { l->resetEffect(timerOnly); }
     void updateColor() { l->updateColor(); }
     CRGB firstColor() const { return l->currentColor; }
     CRGB secondColor() const { return l->color2; }

@@ -649,10 +649,21 @@ void TreeLight::getStatusJsonString(JsonObject& output)
     lights["speed"] = getSpeed();
     lights["effect"] = (int)getEffectType();
     JsonArray effects = lights.createNestedArray("effects");
-    for (size_t i = 0; i < (size_t)EffectType::maxValue; i++)
+    for (size_t i = 0; i < (size_t)EffectType::maxValue; ++i)
     {
         effects.add(effectList[i]->getName());
     }
+    lights["color"] = colorSelection;
+    // TODO remove hard code
+    JsonArray colors = lights.createNestedArray("colors");
+    colors.add("Random1");
+    colors.add("Random2");
+    colors.add("Random3");
+    colors.add("Holly");
+    colors.add("RGW");
+    colors.add("RetroC9");
+    colors.add("FairyLight");
+    colors.add("BW");
 }
 
 void TreeLight::nextEffect()
@@ -793,6 +804,8 @@ void TreeLight::setColorSelection(uint8_t index)
             fill_solid(currentPalette, 16, CRGB::Black);
         }
         colorSelection = index;
+        updateColor();
+        updateColor();
     }
 }
 
@@ -855,8 +868,6 @@ void TreeLight::displayMenu()
         {
             setColorSelection(menu->getSubSelection());
             menuTime = t;
-            updateColor();
-            updateColor();
         }
         else if (t - menuTime > 1000)
         {

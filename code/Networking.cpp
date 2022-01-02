@@ -295,6 +295,7 @@ void Networking::handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* j
     light->setBrightnessLevel(data["brightness"]);
     light->setSpeed(static_cast<Speed>((uint8_t)data["speed"]));
     light->setEffect(static_cast<EffectType>((uint8_t)data["effect"]));
+    light->setColorSelection((uint8_t)data["color"]);
     response->print("OK");
     request->send(response);
 }

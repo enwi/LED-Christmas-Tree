@@ -25,7 +25,7 @@ Info &amp; documentation of LED Christmas Tree Kit, a WiFi enabled Christmas Tre
 
 ## Where to buy
 <a href="https://www.tindie.com/stores/enwi/"><img src="https://d2ss6ovg47m0r5.cloudfront.net/badges/tindie-larges.png" alt="I sell on Tindie" width="200" height="104"></a>
-You can get [this kit](https://www.tindie.com/products/enwi/led-christmas-tree-kit/) on my [tindie store](https://www.tindie.com/stores/enwi/#store-section-products)
+You can get [this kit](https://www.tindie.com/products/enwi/wifi-enabled-addressable-led-christmas-tree-kit/) on my [tindie store](https://www.tindie.com/stores/enwi/#store-section-products)
 
 ## Getting started
 For build instructions have a look at the [Soldering Guide](https://github.com/enwi/LED-Christmas-Tree/blob/main/soldering.md)

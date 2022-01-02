@@ -11,6 +11,17 @@ Info &amp; documentation of LED Christmas Tree Kit, a WiFi enabled Christmas Tre
  - 13x adressable APA106-F5 LEDs
  - Pushbutton
  - WiFi enabled (ESP8266 D1 Mini)
+ - 8 different effects + effect cycling
+ - Brightness control
+ - Effect speed control
+ - 8 different color palettes
+ - WebUI
+    - Change effects
+    - Change color palettes
+    - Change brightness
+    - Change effect speed
+    - Control wifi settings
+    - Upload OTA updates
 
 ## Where to buy
 <a href="https://www.tindie.com/stores/enwi/"><img src="https://d2ss6ovg47m0r5.cloudfront.net/badges/tindie-larges.png" alt="I sell on Tindie" width="200" height="104"></a>

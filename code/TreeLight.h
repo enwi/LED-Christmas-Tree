@@ -68,6 +68,41 @@ public:
     virtual const char* getName() const = 0;
 };
 
+class TreeColors
+{
+public:
+    // Set color selection and update colors if changed
+    void setSelection(uint8_t index);
+    uint8_t getSelection() const { return selection; }
+
+    // Set first color to second color and choose new second color
+    void updateColor();
+
+    CRGB firstColor() const { return color1; }
+    CRGB secondColor() const { return color2; }
+
+    bool isColorPalette() const;
+
+    // Is palette: color from palette
+    // Not a palette: between current first and second color
+    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const;
+
+    static const char* getSelectionName(uint8_t i);
+    static uint8_t getSelectionCount();
+
+private:
+    // returns nullptr if selection is not a palette
+    static const TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
+    // Generate color for selection which is not a palette
+    static CRGB generateColor(uint8_t selection, CRGB baseColor);
+
+private:
+    CRGB color1 = CRGB(0, 0xA0, 0xFF);
+    CRGB color2 = CRGB(0, 0x40, 0xFF);
+    CRGBPalette16 currentPalette {CRGB::Black};
+    uint8_t selection = 0;
+};
+
 class TreeLight
 {
 public:
@@ -108,7 +143,10 @@ public:
         FastLED.show();
     }
     void initColorMenu();
-    void setColorSelection(uint8_t index);
+    void setColorSelection(uint8_t index) { colors.setSelection(index); }
+
+    const TreeColors& getColors() const { return colors; }
+    TreeColors& getColors() { return colors; }
 
 public:
 #if defined(ESP8266)
@@ -121,12 +159,6 @@ public:
 private:
     void runEffect();
     void displayMenu();
-    void updateColor();
-    bool isColorPalette() const;
-    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const;
-
-    // returns nullptr if selection is not a palette
-    static const TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
 
 private:
     Menu* menu;
@@ -137,13 +169,10 @@ private:
     EffectType currentEffectType = EffectType::off;
     IEffect* currentEffect = nullptr;
     IEffect** effectList;
-    CRGB currentColor = CRGB(0, 0xA0, 0xFF);
-    CRGB color2 = CRGB(0, 0x40, 0xFF);
-    CRGBPalette16 currentPalette {CRGB::Black};
     uint8_t speed = 2;
     uint8_t brightnessLevel = 4;
     unsigned long menuTime = 0;
-    uint8_t colorSelection = 0;
+    TreeColors colors;
 };
 
 class TreeLightView
@@ -152,12 +181,12 @@ public:
     TreeLightView(TreeLight& light) : l(&light) { }
 
     void resetEffect(bool timerOnly = true) { l->resetEffect(timerOnly); }
-    void updateColor() { l->updateColor(); }
-    CRGB firstColor() const { return l->currentColor; }
-    CRGB secondColor() const { return l->color2; }
-    bool isColorPalette() const { return l->isColorPalette(); }
+    void updateColor() { l->getColors().updateColor(); }
+    CRGB firstColor() const { return l->getColors().firstColor(); }
+    CRGB secondColor() const { return l->getColors().secondColor(); }
+    bool isColorPalette() const { return l->getColors().isColorPalette(); }
 
-    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const { return l->getPaletteColor(mix, doBlend); }
+    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const { return l->getColors().getPaletteColor(mix, doBlend); }
 
 private:
     TreeLight* l;

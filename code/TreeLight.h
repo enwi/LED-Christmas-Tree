@@ -1,10 +1,12 @@
-#ifndef TREE_EFFECT_H
-#define TREE_EFFECT_H
+#ifndef TREE_LIGHT_H
+#define TREE_LIGHT_H
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <FastLED.h>
 
 #include "Menu.h"
+#include "TreeColors.h"
+#include "TreeEffects.h"
 
 // Config:
 // - brighness
@@ -26,22 +28,6 @@
 // - Indicate Wifi on/off when option is selected (different fading animations)
 // - Color selection first option in menu, because it is changed more often than brightness
 
-// These effect types have to match the order in createEffects() in the cpp file
-enum class EffectType
-{
-    off,
-    solid,
-    twoColorChange,
-    gradientHorizontal,
-    gradientVertical,
-    rainbowHorizontal,
-    rainbowVertical,
-    runningLight,
-    twinkleFox,
-    cycling,
-    maxValue // Not an effect, number of valid effects
-};
-
 enum class Speed
 {
     stopped = 0,
@@ -49,58 +35,6 @@ enum class Speed
     medium = 2,
     fast = 4,
     maxValue // Not a speed
-};
-
-class IEffect
-{
-public:
-    struct EffectControl
-    {
-        bool allowAutoColorChange = false; // Color can change after this effect pass
-        bool fadeOver = true; // Fade over from color of last effect to current effect color
-    };
-
-public:
-    virtual ~IEffect() = default;
-
-    virtual void reset(bool timerOnly) {}; // timerOnly is true when effectTime was reset, false for a full effect reset
-    virtual EffectControl runEffect(class TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) = 0;
-    virtual const char* getName() const = 0;
-};
-
-class TreeColors
-{
-public:
-    // Set color selection and update colors if changed
-    void setSelection(uint8_t index);
-    uint8_t getSelection() const { return selection; }
-
-    // Set first color to second color and choose new second color
-    void updateColor();
-
-    CRGB firstColor() const { return color1; }
-    CRGB secondColor() const { return color2; }
-
-    bool isColorPalette() const;
-
-    // Is palette: color from palette
-    // Not a palette: between current first and second color
-    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const;
-
-    static const char* getSelectionName(uint8_t i);
-    static uint8_t getSelectionCount();
-
-private:
-    // returns nullptr if selection is not a palette
-    static const TProgmemRGBPalette16* getPaletteSelection(uint8_t i);
-    // Generate color for selection which is not a palette
-    static CRGB generateColor(uint8_t selection, CRGB baseColor);
-
-private:
-    CRGB color1 = CRGB(0, 0xA0, 0xFF);
-    CRGB color2 = CRGB(0, 0x40, 0xFF);
-    CRGBPalette16 currentPalette {CRGB::Black};
-    uint8_t selection = 0;
 };
 
 class TreeLight
@@ -186,7 +120,10 @@ public:
     CRGB secondColor() const { return l->getColors().secondColor(); }
     bool isColorPalette() const { return l->getColors().isColorPalette(); }
 
-    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const { return l->getColors().getPaletteColor(mix, doBlend); }
+    CRGB getPaletteColor(uint8_t mix, bool doBlend = true) const
+    {
+        return l->getColors().getPaletteColor(mix, doBlend);
+    }
 
 private:
     TreeLight* l;

@@ -70,11 +70,49 @@ namespace
         c.g = qsub8(c.g, cooling);
         c.b = qsub8(c.b, cooling * 2);
     }
-} // namespace
 
-const TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
-{
-    static const TProgmemRGBPalette16* palettes[] = {nullptr, // harmonic colors
+    ///@brief Generate a harmonic color to the given @ref color
+    ///
+    /// Adapted from http://devmag.org.za/2012/07/29/how-to-choose-colours-procedurally-algorithms/
+    ///
+    /// Analogous: Choose second and third ranges 0.
+    /// Complementary: Choose the third range 0, and first offset angle 180.
+    /// Split Complementary: Choose offset angles 180 +/- a small angle.
+    /// The second and third ranges must be smaller than the difference between the two offset angles.
+    /// Triad: Choose offset angles 120 and 240.
+    ///
+    ///@param color Color to generate harmonic color to
+    ///@param offsetAngle1 [0-255]
+    ///@param offsetAngle2 [0-255]
+    ///@param rangeAngle0 [0-255]
+    ///@param rangeAngle1 [0-255]
+    ///@param rangeAngle2 [0-255]
+    ///@param saturation Saturation of the generated color [0-255]
+    ///@param luminance Luminance of the generated color [0-255]
+    ///@return CRGB
+    CRGB GenerateHarmonicColor(const CHSV color, uint8_t offsetAngle1, uint8_t offsetAngle2, uint8_t rangeAngle0,
+        uint8_t rangeAngle1, uint8_t rangeAngle2, uint8_t saturation, uint8_t luminance)
+    {
+        // const uint8_t referenceAngle = random(0, 256);
+        const uint8_t referenceAngle = color.h;
+        uint8_t randomAngle = random(1, 255) * (rangeAngle0 + rangeAngle1 + rangeAngle2) / 256;
+
+        if (randomAngle > rangeAngle0)
+        {
+            if (randomAngle < rangeAngle0 + rangeAngle1)
+            {
+                randomAngle += offsetAngle1;
+            }
+            else
+            {
+                randomAngle += offsetAngle2;
+            }
+        }
+
+        return CHSV(referenceAngle + randomAngle, saturation, luminance);
+    }
+
+    const TProgmemRGBPalette16* palettes[] = {nullptr, // harmonic colors
         nullptr, //
         nullptr, //
         &Holly_p, //
@@ -82,12 +120,122 @@ const TProgmemRGBPalette16* TreeLight::getPaletteSelection(uint8_t i)
         &RetroC9_p, //
         &FairyLight_p, //
         &BlueWhite_p};
+    constexpr uint8_t paletteCount = sizeof(palettes) / sizeof(TProgmemRGBPalette16*);
+    const char* paletteNames[paletteCount] = {"Random 1", // TODO: Actual names
+        "Random 2", "Random 3", "Holly", "RedGreenWhite", "RetroC9", "FairyLight", "BlueWhite"};
 
-    if (i < (sizeof(palettes) / sizeof(palettes[0])))
+} // namespace
+
+void TreeColors::setSelection(uint8_t index)
+{
+    if (index != selection)
+    {
+        const TProgmemRGBPalette16* palette = getPaletteSelection(index);
+        if (palette != nullptr)
+        {
+            currentPalette = *palette;
+        }
+        else
+        {
+            fill_solid(currentPalette, 16, CRGB::Black);
+        }
+        selection = index;
+        updateColor();
+        updateColor();
+    }
+}
+
+void TreeColors::updateColor()
+{
+    color1 = color2;
+
+    CRGB colorDifference;
+    for (uint8_t i = 0; i < 4; ++i)
+    {
+        if (isColorPalette())
+        {
+            color2 = ColorFromPalette(currentPalette, random(0, 255));
+        }
+        else
+        {
+            color2 = generateColor(selection, color2);
+        }
+        colorDifference = color1;
+        colorDifference -= color2;
+        if (colorDifference.getAverageLight() > 8)
+        {
+            return;
+        }
+    }
+}
+
+bool TreeColors::isColorPalette() const
+{
+    return getPaletteSelection(selection) != nullptr;
+}
+
+CRGB TreeColors::getPaletteColor(uint8_t mix, bool doBlend) const
+{
+    if (isColorPalette())
+    {
+        return ColorFromPalette(currentPalette, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
+    }
+    else
+    {
+        if (!doBlend)
+        {
+            if (mix < 128)
+            {
+                return color1;
+            }
+            else
+            {
+                return color2;
+            }
+        }
+        else
+        {
+            return blend(color1, color2, mix);
+        }
+    }
+}
+
+CRGB TreeColors::generateColor(uint8_t selection, CRGB baseColor)
+{
+    switch (selection)
+    {
+    case 0:
+        return GenerateHarmonicColor(rgb2hsv_approximate(baseColor), 16, 32, 8, 16, 32, 255, 255);
+    case 1:
+        return GenerateHarmonicColor(rgb2hsv_approximate(baseColor), 16, 32, 8, 16, 32, 128, 255);
+    case 2:
+        return GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
+    default:
+        return CRGB::Black;
+    }
+}
+
+const TProgmemRGBPalette16* TreeColors::getPaletteSelection(uint8_t i)
+{
+    if (i < paletteCount)
     {
         return palettes[i];
     }
     return nullptr;
+}
+
+const char* TreeColors::getSelectionName(uint8_t i)
+{
+    if (i < paletteCount)
+    {
+        return paletteNames[i];
+    }
+    return "";
+}
+
+uint8_t TreeColors::getSelectionCount()
+{
+    return paletteCount;
 }
 
 // Effects
@@ -629,7 +777,6 @@ void TreeLight::init(Menu& menu)
     FastLED.show();
     lastUpdate = millis();
     ledBackup.fill_solid(CRGB::Black);
-    setColorSelection(0);
 
     // Init random seed
 #if defined(ESP32) || defined(ESP8266)
@@ -637,9 +784,8 @@ void TreeLight::init(Menu& menu)
 #else
     randomSeed(analogRead(A0) * 17 + 23);
 #endif
-    // Initialize random colors
-    updateColor();
-    updateColor();
+
+    colors.setSelection(0);
 }
 
 void TreeLight::getStatusJsonString(JsonObject& output)
@@ -653,17 +799,13 @@ void TreeLight::getStatusJsonString(JsonObject& output)
     {
         effects.add(effectList[i]->getName());
     }
-    lights["color"] = colorSelection;
-    // TODO remove hard code
+    lights["color"] = colors.getSelection();
+    // TODO: cache values that do not change, reserve array space for fixed size
     JsonArray colors = lights.createNestedArray("colors");
-    colors.add("Random1");
-    colors.add("Random2");
-    colors.add("Random3");
-    colors.add("Holly");
-    colors.add("RGW");
-    colors.add("RetroC9");
-    colors.add("FairyLight");
-    colors.add("BW");
+    for (uint8_t i = 0; i < TreeColors::getSelectionCount(); ++i)
+    {
+        colors.add(TreeColors::getSelectionName(i));
+    }
 }
 
 void TreeLight::nextEffect()
@@ -787,26 +929,7 @@ void TreeLight::initColorMenu()
     menuTime = millis();
     menu->setMenuState(Menu::MenuState::colorSelect);
     menu->setNumSubSelections(8);
-    menu->setSubSelection(colorSelection);
-}
-
-void TreeLight::setColorSelection(uint8_t index)
-{
-    if (index != colorSelection)
-    {
-        const TProgmemRGBPalette16* palette = getPaletteSelection(index);
-        if (palette != nullptr)
-        {
-            currentPalette = *palette;
-        }
-        else
-        {
-            fill_solid(currentPalette, 16, CRGB::Black);
-        }
-        colorSelection = index;
-        updateColor();
-        updateColor();
-    }
+    menu->setSubSelection(colors.getSelection());
 }
 
 void TreeLight::runEffect()
@@ -833,7 +956,7 @@ void TreeLight::runEffect()
     {
         // 30 seconds at normal speed
         resetEffect();
-        updateColor();
+        colors.updateColor();
     }
 }
 
@@ -864,7 +987,7 @@ void TreeLight::displayMenu()
     {
         unsigned long t = millis();
         // Show color
-        if (colorSelection != menu->getSubSelection())
+        if (colors.getSelection() != menu->getSubSelection())
         {
             setColorSelection(menu->getSubSelection());
             menuTime = t;
@@ -872,131 +995,22 @@ void TreeLight::displayMenu()
         else if (t - menuTime > 1000)
         {
             menuTime = t;
-            updateColor();
+            colors.updateColor();
         }
-        leds[12] = currentColor;
-        if (isColorPalette())
+        leds[12] = colors.firstColor();
+        if (colors.isColorPalette())
         {
             uint8_t mix = (t / 64);
             for (uint8_t i = 8; i < 12; ++i)
             {
-                leds[i] = getPaletteColor(mix, false);
+                leds[i] = colors.getPaletteColor(mix, false);
                 mix += 64;
             }
         }
         else
         {
-            leds(8, 11) = color2;
+            leds(8, 11) = colors.secondColor();
         }
-        leds[colorSelection] = CRGB::White;
-    }
-}
-
-///@brief Generate a harmonic color to the given @ref color
-///
-/// Adapted from http://devmag.org.za/2012/07/29/how-to-choose-colours-procedurally-algorithms/
-///
-/// Analogous: Choose second and third ranges 0.
-/// Complementary: Choose the third range 0, and first offset angle 180.
-/// Split Complementary: Choose offset angles 180 +/- a small angle.
-/// The second and third ranges must be smaller than the difference between the two offset angles.
-/// Triad: Choose offset angles 120 and 240.
-///
-///@param color Color to generate harmonic color to
-///@param offsetAngle1 [0-255]
-///@param offsetAngle2 [0-255]
-///@param rangeAngle0 [0-255]
-///@param rangeAngle1 [0-255]
-///@param rangeAngle2 [0-255]
-///@param saturation Saturation of the generated color [0-255]
-///@param luminance Luminance of the generated color [0-255]
-///@return CRGB
-static CRGB GenerateHarmonicColor(const CHSV color, uint8_t offsetAngle1, uint8_t offsetAngle2, uint8_t rangeAngle0,
-    uint8_t rangeAngle1, uint8_t rangeAngle2, uint8_t saturation, uint8_t luminance)
-{
-    // const uint8_t referenceAngle = random(0, 256);
-    const uint8_t referenceAngle = color.h;
-    uint8_t randomAngle = random(1, 255) * (rangeAngle0 + rangeAngle1 + rangeAngle2) / 256;
-
-    if (randomAngle > rangeAngle0)
-    {
-        if (randomAngle < rangeAngle0 + rangeAngle1)
-        {
-            randomAngle += offsetAngle1;
-        }
-        else
-        {
-            randomAngle += offsetAngle2;
-        }
-    }
-
-    return CHSV(referenceAngle + randomAngle, saturation, luminance);
-}
-
-void TreeLight::updateColor()
-{
-    currentColor = color2;
-
-    CRGB colorDifference;
-    for (uint8_t i = 0; i < 4; ++i)
-    {
-        if (isColorPalette())
-        {
-            color2 = ColorFromPalette(currentPalette, random(0, 255));
-        }
-        else
-        {
-            switch (colorSelection)
-            {
-            case 0:
-                color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 255, 255);
-                break;
-            case 1:
-                color2 = GenerateHarmonicColor(rgb2hsv_approximate(color2), 16, 32, 8, 16, 32, 128, 255);
-                break;
-            case 2:
-                color2 = GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
-                break;
-            default:
-                color2 = CRGB::Black;
-            }
-        }
-        colorDifference = currentColor;
-        colorDifference -= color2;
-        if (colorDifference.getAverageLight() > 8)
-        {
-            return;
-        }
-    }
-}
-
-bool TreeLight::isColorPalette() const
-{
-    return getPaletteSelection(colorSelection) != nullptr;
-}
-
-CRGB TreeLight::getPaletteColor(uint8_t mix, bool doBlend) const
-{
-    if (isColorPalette())
-    {
-        return ColorFromPalette(currentPalette, mix, 255, doBlend ? LINEARBLEND : NOBLEND);
-    }
-    else
-    {
-        if (!doBlend)
-        {
-            if (mix < 128)
-            {
-                return currentColor;
-            }
-            else
-            {
-                return color2;
-            }
-        }
-        else
-        {
-            return blend(currentColor, color2, mix);
-        }
+        leds[colors.getSelection()] = CRGB::White;
     }
 }

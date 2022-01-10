@@ -14,8 +14,8 @@ void Networking::initWifi()
     char ssid[33] = {};
     sniprintf(ssid, sizeof(ssid), "%s %s", HOSTNAME, deviceMAC);
 
-    bool client_enabled = (*Config::config)["wifi"]["client_enabled"];
-    bool ap_enabled = (*Config::config)["wifi"]["ap_enabled"];
+    bool client_enabled = Config::config["wifi"]["client_enabled"];
+    bool ap_enabled = Config::config["wifi"]["ap_enabled"];
 
     if (ap_enabled && client_enabled)
     {
@@ -33,9 +33,9 @@ void Networking::initWifi()
     if (client_enabled)
     {
         DEBUGLN("Using wifi in client mode");
-        String ssid = (*Config::config)["wifi"]["client_ssid"];
-        String psk = (*Config::config)["wifi"]["client_password"];
-        bool dhcp = (*Config::config)["wifi"]["client_dhcp_enabled"];
+        String ssid = Config::config["wifi"]["client_ssid"];
+        String psk = Config::config["wifi"]["client_password"];
+        bool dhcp = Config::config["wifi"]["client_dhcp_enabled"];
 
         if (!dhcp)
         {
@@ -43,10 +43,10 @@ void Networking::initWifi()
             IPAddress mask;
             IPAddress gw;
             IPAddress dns;
-            ip.fromString((const char*)((*Config::config)["wifi"]["client_ip"]));
-            mask.fromString((const char*)((*Config::config)["wifi"]["client_mask"]));
-            gw.fromString((const char*)((*Config::config)["wifi"]["client_gateway"]));
-            dns.fromString((const char*)((*Config::config)["wifi"]["client_dns"]));
+            ip.fromString(Config::config["wifi"]["client_ip"].as<const char*>());
+            mask.fromString(Config::config["wifi"]["client_mask"].as<const char*>());
+            gw.fromString(Config::config["wifi"]["client_gateway"].as<const char*>());
+            dns.fromString(Config::config["wifi"]["client_dns"].as<const char*>());
             DEBUGLN("Using static ip");
             if (!WiFi.config(ip, gw, mask, dns))
             {
@@ -67,8 +67,8 @@ void Networking::initWifi()
             delay(1000);
             if (start + 15000 < millis())
             {
-                (*Config::config)["wifi"]["client_enabled"] = false;
-                (*Config::config)["wifi"]["ap_enabled"] = true;
+                Config::config["wifi"]["client_enabled"] = false;
+                Config::config["wifi"]["ap_enabled"] = true;
                 Config::save();
                 DEBUGLN();
                 DEBUGLN('Failed, enabling AP and rebooting');
@@ -87,8 +87,8 @@ void Networking::initWifi()
     {
         DEBUGLN("Using wifi in ap mode");
         WiFi.softAPConfig(AP_IP, AP_IP, AP_NETMASK);
-        String ssid = (*Config::config)["wifi"]["ap_ssid"];
-        String psk = (*Config::config)["wifi"]["ap_password"];
+        String ssid = Config::config["wifi"]["ap_ssid"];
+        String psk = Config::config["wifi"]["ap_password"];
 
         if (psk.length() == 0)
         {
@@ -154,7 +154,7 @@ void Networking::getStatusJsonString(JsonObject& output)
 
     networking["mac"] = deviceMAC;
 
-    bool client_enabled = (*Config::config)["wifi"]["client_enabled"];
+    bool client_enabled = Config::config["wifi"]["client_enabled"];
 
     auto&& wifi_client = networking.createNestedObject("wifi_client");
     wifi_client["status"] = client_enabled ? (WiFi.isConnected() ? "connected" : "enabled") : "disabled";
@@ -242,7 +242,7 @@ void Networking::handleConfigApiGet(AsyncWebServerRequest* request)
 {
     String buffer;
     buffer.reserve(512);
-    serializeJson(*Config::config, buffer);
+    serializeJson(Config::config, buffer);
 
     request->send(200, "application/json", buffer);
 }
@@ -259,25 +259,25 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
 
     JsonObject&& data = json->as<JsonObject>();
 
-    (*Config::config)["wifi"]["client_enabled"] = (bool)data["wifi"]["client_enabled"];
-    (*Config::config)["wifi"]["client_dhcp_enabled"] = (bool)data["wifi"]["client_dhcp_enabled"];
-    (*Config::config)["wifi"]["client_ssid"] = String((const char*)data["wifi"]["client_ssid"]);
-    (*Config::config)["wifi"]["client_password"] = String((const char*)data["wifi"]["client_password"]);
-    (*Config::config)["wifi"]["client_ip"] = String((const char*)data["wifi"]["client_ip"]);
-    (*Config::config)["wifi"]["client_mask"] = String((const char*)data["wifi"]["client_mask"]);
-    (*Config::config)["wifi"]["client_gateway"] = String((const char*)data["wifi"]["client_gateway"]);
-    (*Config::config)["wifi"]["client_dns"] = String((const char*)data["wifi"]["client_dns"]);
+    Config::config["wifi"]["client_enabled"] = data["wifi"]["client_enabled"].as<bool>();
+    Config::config["wifi"]["client_dhcp_enabled"] = data["wifi"]["client_dhcp_enabled"].as<bool>();
+    Config::config["wifi"]["client_ssid"] = data["wifi"]["client_ssid"].as<const char*>();
+    Config::config["wifi"]["client_password"] = data["wifi"]["client_password"].as<const char*>();
+    Config::config["wifi"]["client_ip"] = data["wifi"]["client_ip"].as<const char*>();
+    Config::config["wifi"]["client_mask"] = data["wifi"]["client_mask"].as<const char*>();
+    Config::config["wifi"]["client_gateway"] = data["wifi"]["client_gateway"].as<const char*>();
+    Config::config["wifi"]["client_dns"] = data["wifi"]["client_dns"].as<const char*>();
 
-    (*Config::config)["wifi"]["ap_enabled"] = (bool)data["wifi"]["ap_enabled"];
-    (*Config::config)["wifi"]["ap_ssid"] = String((const char*)data["wifi"]["ap_ssid"]);
-    (*Config::config)["wifi"]["ap_password"] = String((const char*)data["wifi"]["ap_password"]);
+    Config::config["wifi"]["ap_enabled"] = data["wifi"]["ap_enabled"].as<bool>();
+    Config::config["wifi"]["ap_ssid"] = data["wifi"]["ap_ssid"].as<const char*>();
+    Config::config["wifi"]["ap_password"] = data["wifi"]["ap_password"].as<const char*>();
 
-    (*Config::config)["mqtt"]["enabled"] = (bool)data["mqtt"]["enabled"];
-    (*Config::config)["mqtt"]["server"] = String((const char*)data["mqtt"]["server"]);
-    (*Config::config)["mqtt"]["port"] = (uint16_t)data["mqtt"]["port"];
-    (*Config::config)["mqtt"]["id"] = String((const char*)data["mqtt"]["id"]);
-    (*Config::config)["mqtt"]["user"] = String((const char*)data["mqtt"]["user"]);
-    (*Config::config)["mqtt"]["password"] = String((const char*)data["mqtt"]["password"]);
+    Config::config["mqtt"]["enabled"] = data["mqtt"]["enabled"].as<bool>();
+    Config::config["mqtt"]["server"] = data["mqtt"]["server"].as<const char*>();
+    Config::config["mqtt"]["port"] = data["mqtt"]["port"].as<uint16_t>();
+    Config::config["mqtt"]["id"] = data["mqtt"]["id"].as<const char*>();
+    Config::config["mqtt"]["user"] = data["mqtt"]["user"].as<const char*>();
+    Config::config["mqtt"]["password"] = data["mqtt"]["password"].as<const char*>();
 
     Config::save();
 

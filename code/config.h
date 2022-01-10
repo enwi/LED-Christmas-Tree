@@ -17,7 +17,7 @@ public:
     static void setDefaultConfig();
     static void save();
 
-    static StaticJsonDocument<1024>* config;
+    static StaticJsonDocument<1024> config;
 
 private:
 }; // namespace Networking

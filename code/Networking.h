@@ -17,6 +17,8 @@
 #include <Updater.h>
 #endif
 
+
+
 class Networking
 {
 public:
@@ -89,4 +91,5 @@ private:
     static const IPAddress AP_IP;
     static const IPAddress AP_NETMASK;
     static DNSServer dnsServer; // DNS server for captive portal
+    static NetworkConfig config;
 }; // namespace Networking

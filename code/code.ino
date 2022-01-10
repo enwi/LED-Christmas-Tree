@@ -20,6 +20,7 @@ constexpr uint8_t buttonPin = 2;
 AceButton button(buttonPin);
 TreeLight light;
 Menu menu;
+bool wifiEnabled = false;
 
 #if defined(ESP8266) || defined(ESP32)
 #include <ESPAsyncWebServer.h>
@@ -41,9 +42,24 @@ void init_networking()
     Networking::initWifi();
     Networking::initServer(&server, &light);
 }
+void toggle_wifi()
+{
+    if (!wifiEnabled)
+    {
+        wifiEnabled = true;
+    }
+    else
+    {
+        wifiEnabled = false;
+    }
+}
 
 #else
 void init_networking() { }
+void toggle_wifi()
+{
+    wifiEnabled = !wifiEnabled;
+}
 #endif
 
 void selectBrightness()
@@ -121,6 +137,7 @@ void setup()
 
     menu.setMainCallback(1, selectBrightness);
     menu.setMainCallback(2, selectColor);
+    menu.setMainCallback(3, init_networking);
     menu.setBrightnessCallback(updateBrightness);
 }
 

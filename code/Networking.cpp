@@ -14,41 +14,29 @@ void Networking::initWifi()
     char ssid[33] = {};
     sniprintf(ssid, sizeof(ssid), "%s %s", HOSTNAME, deviceMAC);
 
-    bool client_enabled = Config::config["wifi"]["client_enabled"];
-    bool ap_enabled = Config::config["wifi"]["ap_enabled"];
+    NetworkConfig& wifi = Config::getNetworkConfig();
 
-    if (ap_enabled && client_enabled)
+    if (wifi.apEnabled && wifi.clientEnabled)
     {
         WiFi.mode(WIFI_AP_STA);
     }
-    else if (ap_enabled)
+    else if (wifi.apEnabled)
     {
         WiFi.mode(WIFI_AP);
     }
-    else if (client_enabled)
+    else if (wifi.clientEnabled)
     {
         WiFi.mode(WIFI_STA);
     }
 
-    if (client_enabled)
+    if (wifi.clientEnabled)
     {
         DEBUGLN("Using wifi in client mode");
-        String ssid = Config::config["wifi"]["client_ssid"];
-        String psk = Config::config["wifi"]["client_password"];
-        bool dhcp = Config::config["wifi"]["client_dhcp_enabled"];
 
-        if (!dhcp)
+        if (!wifi.dhcpEnabled)
         {
-            IPAddress ip;
-            IPAddress mask;
-            IPAddress gw;
-            IPAddress dns;
-            ip.fromString(Config::config["wifi"]["client_ip"].as<const char*>());
-            mask.fromString(Config::config["wifi"]["client_mask"].as<const char*>());
-            gw.fromString(Config::config["wifi"]["client_gateway"].as<const char*>());
-            dns.fromString(Config::config["wifi"]["client_dns"].as<const char*>());
             DEBUGLN("Using static ip");
-            if (!WiFi.config(ip, gw, mask, dns))
+            if (!WiFi.config(wifi.clientIp, wifi.clientGateway, wifi.clientMask, wifi.clientDns))
             {
                 DEBUGLN("STA Failed to configure");
             }
@@ -58,7 +46,7 @@ void Networking::initWifi()
             DEBUGLN("Using DHCP");
         }
 
-        WiFi.begin(ssid, psk);
+        WiFi.begin(wifi.clientSsid, wifi.clientPassword);
         DEBUG("Connecting to WiFi ..");
         uint64_t start = millis();
         while (WiFi.status() != WL_CONNECTED)
@@ -67,8 +55,8 @@ void Networking::initWifi()
             delay(1000);
             if (start + 15000 < millis())
             {
-                Config::config["wifi"]["client_enabled"] = false;
-                Config::config["wifi"]["ap_enabled"] = true;
+                wifi.clientEnabled = false;
+                wifi.apEnabled = true;
                 Config::save();
                 DEBUGLN();
                 DEBUGLN('Failed, enabling AP and rebooting');
@@ -83,21 +71,19 @@ void Networking::initWifi()
         WiFi.setAutoReconnect(true);
     }
 
-    if (ap_enabled)
+    if (wifi.apEnabled)
     {
         DEBUGLN("Using wifi in ap mode");
         WiFi.softAPConfig(AP_IP, AP_IP, AP_NETMASK);
-        String ssid = Config::config["wifi"]["ap_ssid"];
-        String psk = Config::config["wifi"]["ap_password"];
 
-        if (psk.length() == 0)
+        if (wifi.apPassword.length() == 0)
         {
-            WiFi.softAP(ssid);
+            WiFi.softAP(wifi.apSsid);
             DEBUGLN("Starting open AP");
         }
         else
         {
-            WiFi.softAP(ssid, psk);
+            WiFi.softAP(wifi.apSsid, wifi.apPassword);
             DEBUGLN("Starting protected AP");
         }
 
@@ -154,7 +140,7 @@ void Networking::getStatusJsonString(JsonObject& output)
 
     networking["mac"] = deviceMAC;
 
-    bool client_enabled = Config::config["wifi"]["client_enabled"];
+    bool client_enabled = Config::getNetworkConfig().clientEnabled;
 
     auto&& wifi_client = networking.createNestedObject("wifi_client");
     wifi_client["status"] = client_enabled ? (WiFi.isConnected() ? "connected" : "enabled") : "disabled";
@@ -242,7 +228,10 @@ void Networking::handleConfigApiGet(AsyncWebServerRequest* request)
 {
     String buffer;
     buffer.reserve(512);
-    serializeJson(Config::config, buffer);
+    StaticJsonDocument<1024> document;
+    Config::createJson(document);
+    // TODO: Remove passwords
+    serializeJson(document, buffer);
 
     request->send(200, "application/json", buffer);
 }
@@ -251,39 +240,22 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
 {
     AsyncResponseStream* response = request->beginResponseStream("text/html");
 
-    DEBUG("Received new config: ");
-#ifdef DEBUG_PRINT
-    serializeJson(*json, Serial);
-#endif
-    DEBUGLN();
+    DEBUG("Received new config");
 
     JsonObject&& data = json->as<JsonObject>();
 
-    Config::config["wifi"]["client_enabled"] = data["wifi"]["client_enabled"].as<bool>();
-    Config::config["wifi"]["client_dhcp_enabled"] = data["wifi"]["client_dhcp_enabled"].as<bool>();
-    Config::config["wifi"]["client_ssid"] = data["wifi"]["client_ssid"].as<const char*>();
-    Config::config["wifi"]["client_password"] = data["wifi"]["client_password"].as<const char*>();
-    Config::config["wifi"]["client_ip"] = data["wifi"]["client_ip"].as<const char*>();
-    Config::config["wifi"]["client_mask"] = data["wifi"]["client_mask"].as<const char*>();
-    Config::config["wifi"]["client_gateway"] = data["wifi"]["client_gateway"].as<const char*>();
-    Config::config["wifi"]["client_dns"] = data["wifi"]["client_dns"].as<const char*>();
+    NetworkConfig& wifi = Config::getNetworkConfig();
+    wifi.fromJson(data["wifi"]);
 
-    Config::config["wifi"]["ap_enabled"] = data["wifi"]["ap_enabled"].as<bool>();
-    Config::config["wifi"]["ap_ssid"] = data["wifi"]["ap_ssid"].as<const char*>();
-    Config::config["wifi"]["ap_password"] = data["wifi"]["ap_password"].as<const char*>();
-
-    Config::config["mqtt"]["enabled"] = data["mqtt"]["enabled"].as<bool>();
-    Config::config["mqtt"]["server"] = data["mqtt"]["server"].as<const char*>();
-    Config::config["mqtt"]["port"] = data["mqtt"]["port"].as<uint16_t>();
-    Config::config["mqtt"]["id"] = data["mqtt"]["id"].as<const char*>();
-    Config::config["mqtt"]["user"] = data["mqtt"]["user"].as<const char*>();
-    Config::config["mqtt"]["password"] = data["mqtt"]["password"].as<const char*>();
+    MqttConfig& mqtt = Config::getMqttConfig();
+    mqtt.fromJson(data["mqtt"]);
 
     Config::save();
 
     response->print("OK");
     request->send(response);
 
+    // TODO: Check whether config changed and if restard is needed
     delay(1000);
     ESP.restart();
 }

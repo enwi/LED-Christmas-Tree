@@ -58,10 +58,10 @@ namespace
     /// The second and third ranges must be smaller than the difference between the two offset angles.
     /// Triad: Choose offset angles 120 and 240.
     ///
-    ///@param color Color to generate harmonic color to
+    ///@param color Color to generate harmonic color to (using its hue)
     ///@param offsetAngle1 [0-255]
     ///@param offsetAngle2 [0-255]
-    ///@param rangeAngle0 [0-255]
+    ///@param rangeAngle0 [0-255] Hue angle of allowed adjacent colors
     ///@param rangeAngle1 [0-255]
     ///@param rangeAngle2 [0-255]
     ///@param saturation Saturation of the generated color [0-255]
@@ -193,12 +193,17 @@ CRGB TreeColors::generateColor(uint8_t selection, CRGB baseColor)
     case 1:
         // Random pastel
         return GenerateHarmonicColor(rgb2hsv_approximate(baseColor), 16, 32, 8, 16, 32, 128, 255);
-    case 6:
+    case 6: {
         // Reds
-        return GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
-    case 7:
+        // TODO: Range is only applied towards positive hues, which is why the starting color is shifted here
+        uint8_t brightness = random(200, 255);
+        return GenerateHarmonicColor(CHSV(HUE_RED - 16, 255, 255), 0, 0, 32, 0, 0, 255, brightness);
+    }
+    case 7: {
         // Greens
-        return GenerateHarmonicColor(CHSV(0, 255, 255), 16, 32, 8, 0, 0, 255, 255);
+        uint8_t brightness = random(200, 255);
+        return GenerateHarmonicColor(CHSV(HUE_GREEN - 16, 255, 255), 0, 0, 32, 0, 0, 255, brightness);
+    }
     default:
         return CRGB::Black;
     }

@@ -83,10 +83,10 @@ void Config::save()
     {
         DEBUGLN(F("Failed to write to file"));
     }
-#ifdef DEBUG_PRINT
-    serializeJson(config, Serial);
-#endif
-    DEBUGLN();
+    else
+    {
+        DEBUGLN(F("Successfully updated config."));
+    }
 
     configFile.close();
 }

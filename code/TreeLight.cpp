@@ -20,8 +20,10 @@ void TreeLight::init(Menu& menu)
     ledBackup.fill_solid(CRGB::Black);
 
     // Init random seed
-#if defined(ESP32) || defined(ESP8266)
+#if defined(ESP32)
     randomSeed(ESP.getVcc() * analogRead(A0));
+#elif defined(ESP8266)
+    randomSeed(RANDOM_REG32);
 #else
     randomSeed(analogRead(A0) * 17 + 23);
 #endif

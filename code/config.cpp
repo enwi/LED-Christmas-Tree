@@ -97,8 +97,6 @@ void Config::createJson(JsonDocument& output)
     mqttConfig.toJson(mqtt);
 }
 
-#endif
-
 void NetworkConfig::fromJson(const JsonObjectConst& object)
 {
     clientEnabled = object["client_enabled"];
@@ -112,6 +110,7 @@ void NetworkConfig::fromJson(const JsonObjectConst& object)
     apEnabled = object["ap_enabled"];
     apSsid = object["ap_ssid"].as<const char*>();
     apPassword = object["ap_password"].as<const char*>();
+    wifiEnabled = object["wifi_enabled"];
 }
 
 void NetworkConfig::toJson(JsonObject& object) const
@@ -127,6 +126,7 @@ void NetworkConfig::toJson(JsonObject& object) const
     object["ap_enabled"] = apEnabled;
     object["ap_ssid"] = apSsid;
     object["ap_password"] = apPassword;
+    object["wifi_enabled"] = wifiEnabled;
 }
 
 void MqttConfig::fromJson(const JsonObjectConst& object)
@@ -148,3 +148,5 @@ void MqttConfig::toJson(JsonObject& object) const
     object["user"] = user;
     object["password"] = password;
 }
+
+#endif

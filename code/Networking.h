@@ -15,9 +15,8 @@
 #else
 #include <ESP8266WiFi.h>
 #include <Updater.h>
+#include <include/WiFiState.h>
 #endif
-
-
 
 class Networking
 {
@@ -26,7 +25,11 @@ public:
     Networking() = delete;
 
     static void initWifi();
-    static void initServer(AsyncWebServer* server, TreeLight* light);
+    static void initServer(TreeLight& light);
+
+    static void stop();
+    static void resume();
+    static void initOrResume(TreeLight& light);
 
     static void getStatusJsonString(JsonObject& output);
 
@@ -74,6 +77,10 @@ public:
     /// @return false If the string is not an ip
     static bool isIp(const String& str);
 
+    /// @brief Check if Wifi should be on on startup
+    /// This is the case if it was on at the last shutdown
+    static bool shouldEnableWifiOnStartup();
+
     ///@brief Update DNS and other networking stuff
     ///
     /// Should be called once every second
@@ -87,9 +94,22 @@ private:
     /// @return false If handling captive portal
     static bool captivePortal(AsyncWebServerRequest* request);
 
+    /// @brief Launch access point if client connection fails
+    /// @return true If connected as client
+    /// @return false If connection failed and access point was opened
+    static bool handleClientFailsave();
+
+    /// @brief Configure wifi for client mode
+    static void startClient();
+    /// @brief Configure wifi for access point mode
+    static void startAccessPoint(bool persistent = true);
+
 private:
     static const IPAddress AP_IP;
     static const IPAddress AP_NETMASK;
     static DNSServer dnsServer; // DNS server for captive portal
     static NetworkConfig config;
+    static AsyncWebServer server; /// Webserver for OTA
+    static WiFiState savedState;
+    static bool isInitialized;
 }; // namespace Networking

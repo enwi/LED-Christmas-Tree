@@ -6,91 +6,39 @@
 const IPAddress Networking::AP_IP = {192, 168, 4, 1};
 const IPAddress Networking::AP_NETMASK = {255, 255, 255, 0};
 DNSServer Networking::dnsServer = {};
+bool Networking::isInitialized = false;
+AsyncWebServer Networking::server {80};
+WiFiState Networking::savedState;
 
 void Networking::initWifi()
 {
-    DEBUGLN("Init wifi");
+    if (isInitialized)
+    {
+        DEBUGLN("Wifi already initialized, should not be called again");
+        return;
+    }
+    else if (WiFi.status() == WL_CONNECTED)
+    {
+        DEBUGLN("Wifi auto connected");
+        isInitialized = true;
+    }
 
-    char ssid[33] = {};
-    sniprintf(ssid, sizeof(ssid), "%s %s", HOSTNAME, deviceMAC);
+    DEBUGLN("Init wifi");
 
     NetworkConfig& wifi = Config::getNetworkConfig();
 
-    if (wifi.apEnabled && wifi.clientEnabled)
+    // Does not work without issues
+    // if (wifi.apEnabled && wifi.clientEnabled)
+    //{
+    //    WiFi.mode(WIFI_AP_STA);
+    //}
+    if (wifi.clientEnabled)
     {
-        WiFi.mode(WIFI_AP_STA);
+        startClient();
     }
     else if (wifi.apEnabled)
     {
-        WiFi.mode(WIFI_AP);
-    }
-    else if (wifi.clientEnabled)
-    {
-        WiFi.mode(WIFI_STA);
-    }
-
-    if (wifi.clientEnabled)
-    {
-        DEBUGLN("Using wifi in client mode");
-
-        if (!wifi.dhcpEnabled)
-        {
-            DEBUGLN("Using static ip");
-            if (!WiFi.config(wifi.clientIp, wifi.clientGateway, wifi.clientMask, wifi.clientDns))
-            {
-                DEBUGLN("STA Failed to configure");
-            }
-        }
-        else
-        {
-            DEBUGLN("Using DHCP");
-        }
-
-        WiFi.begin(wifi.clientSsid, wifi.clientPassword);
-        DEBUG("Connecting to WiFi ..");
-        uint64_t start = millis();
-        while (WiFi.status() != WL_CONNECTED)
-        {
-            DEBUG('.');
-            delay(1000);
-            if (start + 15000 < millis())
-            {
-                wifi.clientEnabled = false;
-                wifi.apEnabled = true;
-                Config::save();
-                DEBUGLN();
-                DEBUGLN('Failed, enabling AP and rebooting');
-                Serial.flush();
-                ESP.restart();
-            }
-        }
-        DEBUG("Connected: ");
-        DEBUGLN(WiFi.localIP());
-
-        WiFi.setAutoConnect(true);
-        WiFi.setAutoReconnect(true);
-    }
-
-    if (wifi.apEnabled)
-    {
-        DEBUGLN("Using wifi in ap mode");
-        WiFi.softAPConfig(AP_IP, AP_IP, AP_NETMASK);
-
-        if (wifi.apPassword.length() == 0)
-        {
-            WiFi.softAP(wifi.apSsid);
-            DEBUGLN("Starting open AP");
-        }
-        else
-        {
-            WiFi.softAP(wifi.apSsid, wifi.apPassword);
-            DEBUGLN("Starting protected AP");
-        }
-
-        // captive portal
-        DEBUGLN("Starting DNS server");
-        dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-        dnsServer.start(53, "*", WiFi.softAPIP());
+        startAccessPoint();
     }
     else
     {
@@ -98,40 +46,86 @@ void Networking::initWifi()
         DEBUGLN("Stopping DNS server");
         dnsServer.stop();
     }
+    if (!Config::getNetworkConfig().wifiEnabled)
+    {
+        Config::getNetworkConfig().wifiEnabled = true;
+        Config::save();
+    }
+    isInitialized = true;
 }
 
-void Networking::initServer(AsyncWebServer* server, TreeLight* light)
+void Networking::initServer(TreeLight& light)
 {
-    server->on(
+    server.on(
         "/ota", HTTP_POST, [](AsyncWebServerRequest* request) { request->send(200); }, Networking::handleOTAUpload);
 
-    server->on("/api/status", HTTP_GET,
-        [light](AsyncWebServerRequest* request) { Networking::handleStatusApi(request, light); });
-    server->on("/api/config", HTTP_GET, handleConfigApiGet);
+    server.on("/api/status", HTTP_GET,
+        [&light](AsyncWebServerRequest* request) { Networking::handleStatusApi(request, &light); });
+    server.on("/api/config", HTTP_GET, handleConfigApiGet);
 
     AsyncCallbackJsonWebHandler* handlerSetLeds
-        = new AsyncCallbackJsonWebHandler("/api/set_leds", [light](AsyncWebServerRequest* request, JsonVariant& json) {
-              Networking::handleSetLedsApi(request, &json, light);
+        = new AsyncCallbackJsonWebHandler("/api/set_leds", [&light](AsyncWebServerRequest* request, JsonVariant& json) {
+              Networking::handleSetLedsApi(request, &json, &light);
           });
-    server->addHandler(handlerSetLeds);
+    server.addHandler(handlerSetLeds);
 
     AsyncCallbackJsonWebHandler* handlerSetConfig = new AsyncCallbackJsonWebHandler("/api/config",
         [](AsyncWebServerRequest* request, JsonVariant& json) { Networking::handleConfigApiPost(request, &json); });
-    server->addHandler(handlerSetConfig);
+    server.addHandler(handlerSetConfig);
 
-    server->on("/", HTTP_GET, Networking::handleIndex);
-    server->on("/home", HTTP_GET, Networking::handleIndex);
-    server->on("/config", HTTP_GET, Networking::handleIndex);
+    server.on("/", HTTP_GET, Networking::handleIndex);
+    server.on("/home", HTTP_GET, Networking::handleIndex);
+    server.on("/config", HTTP_GET, Networking::handleIndex);
 
     // captive portal
     auto handleCaptivePortal = [](AsyncWebServerRequest* request) { captivePortal(request); };
     // Android captive portal. Maybe not needed. Might be handled by notFound handler.
-    server->on("/generate_204", HTTP_GET, handleCaptivePortal);
+    server.on("/generate_204", HTTP_GET, handleCaptivePortal);
     // Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
-    server->on("/fwlink", HTTP_GET, handleCaptivePortal);
-    server->onNotFound(handleCaptivePortal);
+    server.on("/fwlink", HTTP_GET, handleCaptivePortal);
+    server.onNotFound(handleCaptivePortal);
 
-    server->begin();
+    server.begin();
+}
+
+void Networking::stop()
+{
+    // server.end();
+    WiFi.shutdown(savedState);
+    // Save off state for reboot
+    Config::getNetworkConfig().wifiEnabled = false;
+    Config::save();
+    DEBUGLN("Wifi stopped");
+}
+
+void Networking::resume()
+{
+    WiFi.resumeFromShutdown(savedState);
+    Config::getNetworkConfig().wifiEnabled = true;
+    Config::save();
+    DEBUGLN("Resuming wifi");
+    if (handleClientFailsave())
+    {
+        // server.begin();
+        DEBUGLN("Wifi resumed");
+    }
+    else
+    {
+        DEBUGLN("Could not reconnect after resume");
+    }
+}
+
+void Networking::initOrResume(TreeLight& light)
+{
+    if (!isInitialized)
+    {
+        initWifi();
+        initServer(light);
+    }
+    else
+    {
+        resume();
+    }
 }
 
 void Networking::getStatusJsonString(JsonObject& output)
@@ -285,6 +279,11 @@ bool Networking::isIp(const String& str)
     return true;
 }
 
+bool Networking::shouldEnableWifiOnStartup()
+{
+    return Config::getNetworkConfig().wifiEnabled;
+}
+
 void Networking::update()
 {
     // handle DNS
@@ -316,6 +315,89 @@ bool Networking::captivePortal(AsyncWebServerRequest* request)
     response->addHeader(F("Location"), F("http://192.168.4.1"));
     request->send(response);
     return true;
+}
+
+bool Networking::handleClientFailsave()
+{
+    unsigned long start = millis();
+    while (WiFi.status() != WL_CONNECTED)
+    {
+
+        DEBUG('.');
+        delay(1000);
+        if (millis() - start > 15000)
+        {
+            DEBUGLN();
+            DEBUGLN("Failed, enabling AP");
+
+            startAccessPoint(false);
+            return false;
+        }
+    }
+    return true;
+}
+
+void Networking::startClient()
+{
+    DEBUGLN("Using wifi in client mode");
+
+    const NetworkConfig& wifi = Config::getNetworkConfig();
+
+    if (!wifi.dhcpEnabled)
+    {
+        DEBUGLN("Using static ip");
+        if (!WiFi.config(wifi.clientIp, wifi.clientGateway, wifi.clientMask, wifi.clientDns))
+        {
+            DEBUGLN("STA Failed to configure");
+        }
+    }
+    else
+    {
+        DEBUGLN("Using DHCP");
+    }
+
+    WiFi.persistent(true);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(wifi.clientSsid, wifi.clientPassword);
+    DEBUG("Connecting to WiFi ..");
+    uint64_t start = millis();
+
+    if (handleClientFailsave())
+    {
+        DEBUG("Connected: ");
+        DEBUGLN(WiFi.localIP());
+
+        WiFi.setAutoConnect(true);
+        WiFi.setAutoReconnect(true);
+    }
+}
+
+void Networking::startAccessPoint(bool persistent)
+{
+    const NetworkConfig& wifi = Config::getNetworkConfig();
+
+    DEBUGLN("Using wifi in ap mode");
+
+    WiFi.persistent(persistent);
+
+    WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(AP_IP, AP_IP, AP_NETMASK);
+
+    if (wifi.apPassword.length() == 0)
+    {
+        WiFi.softAP(wifi.apSsid);
+        DEBUGLN("Starting open AP");
+    }
+    else
+    {
+        WiFi.softAP(wifi.apSsid, wifi.apPassword);
+        DEBUGLN("Starting protected AP");
+    }
+
+    // captive portal
+    DEBUGLN("Starting DNS server");
+    dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+    dnsServer.start(53, "*", WiFi.softAPIP());
 }
 
 #endif

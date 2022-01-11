@@ -29,33 +29,43 @@ bool wifiEnabled = false;
 #include "Mqtt.h"
 #include "Networking.h"
 
-AsyncWebServer server(80); /// Webserver for OTA
-
-void init_networking()
+void init_config()
 {
     uint8_t mac[6];
     wifi_get_macaddr(STATION_IF, mac);
     sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     Config::initConfig();
-
-    Networking::initWifi();
-    Networking::initServer(&server, &light);
+    WiFi.persistent(true);
+    DEBUGLN(WiFi.getMode());
+    DEBUGLN(WiFi.getAutoConnect());
+    if (Networking::shouldEnableWifiOnStartup())
+    {
+        DEBUGLN("Wifi enabled");
+        Networking::initOrResume(light);
+        wifiEnabled = true;
+    }
+    else
+    {
+        DEBUGLN("Wifi disabled");
+    }
 }
 void toggle_wifi()
 {
     if (!wifiEnabled)
     {
         wifiEnabled = true;
+        Networking::initOrResume(light);
     }
     else
     {
         wifiEnabled = false;
+        Networking::stop();
     }
 }
 
 #else
-void init_networking() { }
+void init_config() { }
 void toggle_wifi()
 {
     wifiEnabled = !wifiEnabled;
@@ -133,11 +143,11 @@ void setup()
     buttonConfig->setRepeatPressDelay(1000);
     buttonConfig->setRepeatPressInterval(1000);
 
-    init_networking();
+    init_config();
 
     menu.setMainCallback(1, selectBrightness);
     menu.setMainCallback(2, selectColor);
-    menu.setMainCallback(3, init_networking);
+    menu.setMainCallback(3, toggle_wifi);
     menu.setBrightnessCallback(updateBrightness);
 }
 

@@ -23,6 +23,7 @@ struct NetworkConfig
     bool apEnabled = true;
     String apSsid;
     String apPassword;
+    bool wifiEnabled = false;
 
     void fromJson(const JsonObjectConst& object);
     void toJson(JsonObject& object) const;

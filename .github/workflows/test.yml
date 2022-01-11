@@ -1,85 +1,52 @@
-# This is the name of the workflow, visible on GitHub UI.
+# Workflow name, visible on GitHub UI.
 name: test
 
-# Here we tell GitHub to run the workflow when a commit
-# is pushed or a Pull Request is opened.
+# Run the workflow when a commit is pushed or a Pull Request is opened
 on: [push, pull_request]
 
-# This is the list of jobs that will be run concurrently.
-# Since we use a build matrix, the actual number of jobs
-# started depends on how many configurations the matrix
-# will produce.
+# List of jobs that will be run concurrently
 jobs:
-  # This is the name of the job - can be whatever.
-  test-matrix:
+  # Name of the job
+  test:
 
-    # Here we tell GitHub that the jobs must be determined
-    # dynamically depending on a matrix configuration.
-    strategy:
-      matrix:
-        # The matrix will produce one job for each configuration
-        # parameter of type `arduino-platform`, in this case a
-        # total of 2.
-        arduino-platform: ["esp8266:esp8266@2.7.4", "arduino:avr"]
-        # This is usually optional but we need to statically define the
-        # FQBN of the boards we want to test for each platform. In the
-        # future the CLI might automatically detect and download the core
-        # needed to compile against a certain FQBN, at that point the
-        # following `include` section will be useless.
-        include:
-          # This works like this: when the platform is "arduino:avr", the
-          # variable `fqbn` is set to "arduino:avr:unowifi".
-          - arduino-platform: "esp8266:esp8266@2.7.4"
-            fqbn: esp8266:esp8266:d1_mini:xtal=160,vt=flash,exception=legacy,ssl=all,eesz=4M2M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600
-            path: esp8266.esp8266.d1_mini
-            name: code.ino.bin
-          - arduino-platform: "arduino:avr"
-            fqbn: arduino:avr:unowifi
-            path: arduino.avr.unowifi
-            name: code.ino.elf
-
-    # This is the platform GitHub will use to run our workflow, we
-    # pick Windows for no particular reason.
+    # Platform GitHub will use to run workflow, we pick Windows for no particular reason
     runs-on: windows-latest
 
     # Make sure Arduino CLI allows to install libraries with --git-url
     env:
           ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL: true
 
-    # This is the list of steps this job will run.
+    # List of steps this job will run
     steps:
 
-      # First of all, we clone the repo using the `checkout` action.
+      # Clone the repo using the `checkout` action
       - name: Checkout
         uses: actions/checkout@v2
         with:
           submodules: true
 
-      # We use the `arduino/setup-arduino-cli` action to install and
-      # configure the Arduino CLI on the system.
+      # Install and configure Arduino CLI
       - name: Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v1
 
-      # We then install the platform, which one will be determined
-      # dynamically by the build matrix.
+      # Install the platform and dependencies
       - name: Install platform
         run: |
           arduino-cli core update-index --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
-          arduino-cli core install ${{ matrix.arduino-platform }} --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli core install esp8266:esp8266@2.7.4 --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
           arduino-cli lib install ArduinoJson
           arduino-cli lib install FastLED
           arduino-cli lib install AceButton
           arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncTCP.git
           arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git
       
-      # Finally, we compile the sketch, using the FQBN that was set
-      # in the build matrix.
+      # Compile the sketch
       - name: Compile Sketch
         run: |
-          arduino-cli compile --fqbn "${{ matrix.fqbn }}" --export-binaries ./code
+          arduino-cli compile --fqbn "esp8266:esp8266:d1_mini:xtal=160,vt=flash,exception=legacy,ssl=all,eesz=4M2M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600" --export-binaries ./code
       
-      # After compilation we can upload our binary files
+      # Upload binary files as artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          path: code/build/${{ matrix.path }}/${{ matrix.name }}
+          path: code/build/esp8266.esp8266.d1_mini/code.ino.bin

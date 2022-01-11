@@ -1,7 +1,5 @@
 #include "Config.h"
 
-#if defined(ESP8266) || defined(ESP32)
-
 constexpr int documentSize = 1024;
 
 NetworkConfig Config::networkConfig;
@@ -149,4 +147,3 @@ void MqttConfig::toJson(JsonObject& object) const
     object["password"] = password;
 }
 
-#endif

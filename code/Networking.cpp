@@ -1,4 +1,3 @@
-#if defined(ESP8266) || defined(ESP32)
 #include "Networking.h"
 
 #include "webui/cpp/build.html.gz.h"
@@ -400,4 +399,3 @@ void Networking::startAccessPoint(bool persistent)
     dnsServer.start(53, "*", WiFi.softAPIP());
 }
 
-#endif

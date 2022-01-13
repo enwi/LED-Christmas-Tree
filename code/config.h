@@ -1,12 +1,12 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include <FS.h>
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
-
+#include <FS.h>
 
 #include "Constants.h"
+#include "TreeEffects.h"
 
 struct NetworkConfig
 {
@@ -40,19 +40,32 @@ struct MqttConfig
     void toJson(JsonObject& object) const;
 };
 
+struct EffectConfig
+{
+    uint8_t speed = 2;
+    uint8_t brightnessLevel = 4;
+    EffectType currentEffectType = EffectType::off;
+    uint8_t colorSelection = 0;
+
+    void fromJson(const JsonObjectConst& object);
+    void toJson(JsonObject& object) const;
+};
+
 class Config
 {
 public:
-    
     void initConfig();
     NetworkConfig& getNetworkConfig();
     MqttConfig& getMqttConfig();
+    EffectConfig& getEffectConfig();
     void setDefaultConfig();
-    void save();
+    void saveConfig();
     void createJson(JsonDocument& output);
+
+    void saveEffect();
 
 private:
     NetworkConfig networkConfig;
     MqttConfig mqttConfig;
+    EffectConfig effectConfig;
 }; // namespace Networking
-

@@ -46,6 +46,11 @@ void init_config()
     {
         DEBUGLN("Wifi disabled");
     }
+    EffectConfig& effectConfig = config.getEffectConfig();
+    light.setBrightnessLevel(effectConfig.brightnessLevel);
+    light.setColorSelection(effectConfig.colorSelection);
+    light.setSpeed((Speed)effectConfig.speed);
+    light.setEffect(effectConfig.currentEffectType);
 }
 void toggle_wifi()
 {
@@ -59,6 +64,18 @@ void toggle_wifi()
         wifiEnabled = false;
         networking.stop();
     }
+}
+
+void save_effect()
+{
+    EffectConfig& effectConfig = config.getEffectConfig();
+    effectConfig.brightnessLevel = light.getBrightnessLevel();
+
+    effectConfig.colorSelection = light.getColors().getSelection();
+    effectConfig.speed = (uint8_t)light.getSpeed();
+    effectConfig.currentEffectType = light.getEffectType();
+
+    config.saveEffect();
 }
 
 void selectBrightness()
@@ -136,7 +153,8 @@ void setup()
 
     menu.setMainCallback(1, selectBrightness);
     menu.setMainCallback(2, selectColor);
-    menu.setMainCallback(3, toggle_wifi);
+    menu.setMainCallback(3, save_effect);
+    menu.setMainCallback(4, toggle_wifi);
     menu.setBrightnessCallback(updateBrightness);
 }
 

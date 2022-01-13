@@ -2,9 +2,6 @@
 
 constexpr int documentSize = 1024;
 
-NetworkConfig Config::networkConfig;
-MqttConfig Config::mqttConfig;
-
 void Config::initConfig()
 {
     if (SPIFFS.begin())
@@ -26,7 +23,7 @@ void Config::initConfig()
                 if (error)
                 {
                     DEBUGLN(F("Failed to read file, using default configuration"));
-                    Config::setDefaultConfig();
+                    setDefaultConfig();
                 }
                 else
                 {
@@ -39,8 +36,8 @@ void Config::initConfig()
         else
         {
             DEBUGLN("Config file does not exist");
-            Config::setDefaultConfig();
-            Config::save();
+            setDefaultConfig();
+            save();
         }
     }
     else

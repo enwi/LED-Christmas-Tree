@@ -2,13 +2,6 @@
 
 #include "webui/cpp/build.html.gz.h"
 
-const IPAddress Networking::AP_IP = {192, 168, 4, 1};
-const IPAddress Networking::AP_NETMASK = {255, 255, 255, 0};
-DNSServer Networking::dnsServer = {};
-bool Networking::isInitialized = false;
-AsyncWebServer Networking::server {80};
-WiFiState Networking::savedState;
-
 void Networking::initWifi()
 {
     if (isInitialized)
@@ -22,8 +15,7 @@ void Networking::initWifi()
         isInitialized = true;
     }
 
-
-    NetworkConfig& wifi = Config::getNetworkConfig();
+    NetworkConfig& wifi = config.getNetworkConfig();
 
     // Does not work without issues
     // if (wifi.apEnabled && wifi.clientEnabled)
@@ -41,10 +33,10 @@ void Networking::initWifi()
         startAccessPoint();
     }
 
-    if (!Config::getNetworkConfig().wifiEnabled)
+    if (!config.getNetworkConfig().wifiEnabled)
     {
-        Config::getNetworkConfig().wifiEnabled = true;
-        Config::save();
+        config.getNetworkConfig().wifiEnabled = true;
+        config.save();
     }
     isInitialized = true;
 }
@@ -52,28 +44,31 @@ void Networking::initWifi()
 void Networking::initServer(TreeLight& light)
 {
     server.on(
-        "/ota", HTTP_POST, [](AsyncWebServerRequest* request) { request->send(200); }, Networking::handleOTAUpload);
+        "/ota", HTTP_POST, [](AsyncWebServerRequest* request) { request->send(200); },
+        [this](AsyncWebServerRequest* request, const String& filename, size_t index, uint8_t* data, size_t len,
+            bool final) { handleOTAUpload(request, filename, index, data, len, final); });
 
-    server.on("/api/status", HTTP_GET,
-        [&light](AsyncWebServerRequest* request) { Networking::handleStatusApi(request, &light); });
-    server.on("/api/config", HTTP_GET, handleConfigApiGet);
+    server.on(
+        "/api/status", HTTP_GET, [&light, this](AsyncWebServerRequest* request) { handleStatusApi(request, &light); });
+    server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* r) { handleConfigApiGet(r); });
 
-    AsyncCallbackJsonWebHandler* handlerSetLeds
-        = new AsyncCallbackJsonWebHandler("/api/set_leds", [&light](AsyncWebServerRequest* request, JsonVariant& json) {
-              Networking::handleSetLedsApi(request, &json, &light);
-          });
+    AsyncCallbackJsonWebHandler* handlerSetLeds = new AsyncCallbackJsonWebHandler(
+        "/api/set_leds", [&light, this](AsyncWebServerRequest* request, JsonVariant& json) {
+            handleSetLedsApi(request, &json, &light);
+        });
     server.addHandler(handlerSetLeds);
 
     AsyncCallbackJsonWebHandler* handlerSetConfig = new AsyncCallbackJsonWebHandler("/api/config",
-        [](AsyncWebServerRequest* request, JsonVariant& json) { Networking::handleConfigApiPost(request, &json); });
+        [this](AsyncWebServerRequest* request, JsonVariant& json) { handleConfigApiPost(request, &json); });
     server.addHandler(handlerSetConfig);
 
-    server.on("/", HTTP_GET, Networking::handleIndex);
-    server.on("/home", HTTP_GET, Networking::handleIndex);
-    server.on("/config", HTTP_GET, Networking::handleIndex);
+    auto indexHandler = [this](AsyncWebServerRequest* r) { handleIndex(r); };
+    server.on("/", HTTP_GET, indexHandler);
+    server.on("/home", HTTP_GET, indexHandler);
+    server.on("/config", HTTP_GET, indexHandler);
 
     // captive portal
-    auto handleCaptivePortal = [](AsyncWebServerRequest* request) { captivePortal(request); };
+    auto handleCaptivePortal = [this](AsyncWebServerRequest* request) { captivePortal(request); };
     // Android captive portal. Maybe not needed. Might be handled by notFound handler.
     server.on("/generate_204", HTTP_GET, handleCaptivePortal);
     // Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
@@ -86,18 +81,18 @@ void Networking::initServer(TreeLight& light)
 void Networking::stop()
 {
     // server.end();
-    WiFi.mode(WIFI_SHUTDOWN,&savedState);
+    WiFi.mode(WIFI_SHUTDOWN, &savedState);
     // Save off state for reboot
-    Config::getNetworkConfig().wifiEnabled = false;
-    Config::save();
+    config.getNetworkConfig().wifiEnabled = false;
+    config.save();
     DEBUGLN("Wifi stopped");
 }
 
 void Networking::resume()
 {
-    WiFi.mode(WIFI_RESUME,&savedState);
-    Config::getNetworkConfig().wifiEnabled = true;
-    Config::save();
+    WiFi.mode(WIFI_RESUME, &savedState);
+    config.getNetworkConfig().wifiEnabled = true;
+    config.save();
     DEBUGLN("Resuming wifi");
     if (handleClientFailsave())
     {
@@ -129,7 +124,7 @@ void Networking::getStatusJsonString(JsonObject& output)
 
     networking["mac"] = deviceMAC;
 
-    bool client_enabled = Config::getNetworkConfig().clientEnabled;
+    bool client_enabled = config.getNetworkConfig().clientEnabled;
 
     auto&& wifi_client = networking.createNestedObject("wifi_client");
     wifi_client["status"] = client_enabled ? (WiFi.isConnected() ? "connected" : "enabled") : "disabled";
@@ -143,7 +138,7 @@ void Networking::getStatusJsonString(JsonObject& output)
 }
 
 void Networking::handleOTAUpload(
-    AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final)
+    AsyncWebServerRequest* request, const String& filename, size_t index, uint8_t* data, size_t len, bool final)
 {
     if (!index)
     {
@@ -202,8 +197,8 @@ void Networking::handleStatusApi(AsyncWebServerRequest* request, TreeLight* ligh
     obj["uptime"] = millis() / 1000;
     obj["heap_free"] = ESP.getFreeHeap();
 
-    Networking::getStatusJsonString(obj);
-    Mqtt::getStatusJsonString(obj);
+    getStatusJsonString(obj);
+    mqtt.getStatusJsonString(obj);
     light->getStatusJsonString(obj);
 
     String buffer;
@@ -218,7 +213,7 @@ void Networking::handleConfigApiGet(AsyncWebServerRequest* request)
     String buffer;
     buffer.reserve(512);
     StaticJsonDocument<1024> document;
-    Config::createJson(document);
+    config.createJson(document);
     // TODO: Remove passwords
     serializeJson(document, buffer);
 
@@ -233,13 +228,13 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
 
     JsonObject&& data = json->as<JsonObject>();
 
-    NetworkConfig& wifi = Config::getNetworkConfig();
+    NetworkConfig& wifi = config.getNetworkConfig();
     wifi.fromJson(data["wifi"]);
 
-    MqttConfig& mqtt = Config::getMqttConfig();
+    MqttConfig& mqtt = config.getMqttConfig();
     mqtt.fromJson(data["mqtt"]);
 
-    Config::save();
+    config.save();
 
     response->print("OK");
     request->send(response);
@@ -276,7 +271,7 @@ bool Networking::isIp(const String& str)
 
 bool Networking::shouldEnableWifiOnStartup()
 {
-    return Config::getNetworkConfig().wifiEnabled;
+    return config.getNetworkConfig().wifiEnabled;
 }
 
 void Networking::update()
@@ -336,7 +331,7 @@ void Networking::startClient()
 {
     DEBUGLN("Using wifi in client mode");
 
-    const NetworkConfig& wifi = Config::getNetworkConfig();
+    const NetworkConfig& wifi = config.getNetworkConfig();
 
     if (!wifi.dhcpEnabled)
     {
@@ -369,7 +364,7 @@ void Networking::startClient()
 
 void Networking::startAccessPoint(bool persistent)
 {
-    const NetworkConfig& wifi = Config::getNetworkConfig();
+    const NetworkConfig& wifi = config.getNetworkConfig();
 
     DEBUGLN("Using wifi in ap mode");
 
@@ -394,4 +389,3 @@ void Networking::startAccessPoint(bool persistent)
     dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     dnsServer.start(53, "*", WiFi.softAPIP());
 }
-

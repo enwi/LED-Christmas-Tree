@@ -22,7 +22,6 @@ void Networking::initWifi()
         isInitialized = true;
     }
 
-    DEBUGLN("Init wifi");
 
     NetworkConfig& wifi = Config::getNetworkConfig();
 
@@ -31,20 +30,17 @@ void Networking::initWifi()
     //{
     //    WiFi.mode(WIFI_AP_STA);
     //}
-    if (wifi.clientEnabled)
+    if (wifi.clientEnabled && !isInitialized)
     {
+        DEBUGLN("Init wifi client");
         startClient();
     }
     else if (wifi.apEnabled)
     {
+        DEBUGLN("Init wifi AP");
         startAccessPoint();
     }
-    else
-    {
-        // captive portal
-        DEBUGLN("Stopping DNS server");
-        dnsServer.stop();
-    }
+
     if (!Config::getNetworkConfig().wifiEnabled)
     {
         Config::getNetworkConfig().wifiEnabled = true;
@@ -90,7 +86,7 @@ void Networking::initServer(TreeLight& light)
 void Networking::stop()
 {
     // server.end();
-    WiFi.shutdown(savedState);
+    WiFi.mode(WIFI_SHUTDOWN,&savedState);
     // Save off state for reboot
     Config::getNetworkConfig().wifiEnabled = false;
     Config::save();
@@ -99,7 +95,7 @@ void Networking::stop()
 
 void Networking::resume()
 {
-    WiFi.resumeFromShutdown(savedState);
+    WiFi.mode(WIFI_RESUME,&savedState);
     Config::getNetworkConfig().wifiEnabled = true;
     Config::save();
     DEBUGLN("Resuming wifi");
@@ -366,7 +362,7 @@ void Networking::startClient()
         DEBUG("Connected: ");
         DEBUGLN(WiFi.localIP());
 
-        WiFi.setAutoConnect(true);
+        WiFi.setAutoConnect(false);
         WiFi.setAutoReconnect(true);
     }
 }

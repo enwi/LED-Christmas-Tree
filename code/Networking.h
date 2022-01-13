@@ -22,16 +22,18 @@ class Networking
 {
 public:
     ///@brief Static class has no constructor
-    Networking() = delete;
+    Networking(Config& config) : config(config), mqtt(config) { }
 
-    static void initWifi();
-    static void initServer(TreeLight& light);
+    Networking(Networking&&) = delete;
 
-    static void stop();
-    static void resume();
-    static void initOrResume(TreeLight& light);
+    void initWifi();
+    void initServer(TreeLight& light);
 
-    static void getStatusJsonString(JsonObject& output);
+    void stop();
+    void resume();
+    void initOrResume(TreeLight& light);
+
+    void getStatusJsonString(JsonObject& output);
 
     ///@brief Handle the upload of binary program
     ///
@@ -40,51 +42,51 @@ public:
     ///@param index Index of the raw @ref data within the whole 'file'
     ///@param data Raw data chunk
     ///@param len Size of the raw @ref data chunk
-    static void handleOTAUpload(
-        AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+    void handleOTAUpload(
+        AsyncWebServerRequest* request, const String& filename, size_t index, uint8_t* data, size_t len, bool final);
 
     ///@brief Handle the index page
     ///@param request Request coming from webserver
-    static void handleIndex(AsyncWebServerRequest* request);
+    void handleIndex(AsyncWebServerRequest* request);
 
     ///@brief Handle the status api
     ///
     ///@param request  Request coming from webserver
     ///@param light TreeLight to control
-    static void handleStatusApi(AsyncWebServerRequest* request, TreeLight* light);
+    void handleStatusApi(AsyncWebServerRequest* request, TreeLight* light);
 
     ///@brief Handle the config GET api
     ///@param request Request coming from webserver
-    static void handleConfigApiGet(AsyncWebServerRequest* request);
+    void handleConfigApiGet(AsyncWebServerRequest* request);
 
     ///@brief Handle the config POST api
     ///
     ///@param request Request coming from webserver
     ///@param json JSON object containing configuration of wifi, mqtt, etc.
-    static void handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant* json);
+    void handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant* json);
 
     ///@brief Handle the set leds api
     ///
     ///@param request Request coming from webserver
     ///@param json JSON object containing values of brightness, speed, effect, etc.
     ///@param light TreeLight to control
-    static void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light);
+    void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light);
 
     /// @brief Check if the given string is an ip address
     ///
     /// @param str String to check
     /// @return true If the string is an ip
     /// @return false If the string is not an ip
-    static bool isIp(const String& str);
+    bool isIp(const String& str);
 
     /// @brief Check if Wifi should be on on startup
     /// This is the case if it was on at the last shutdown
-    static bool shouldEnableWifiOnStartup();
+    bool shouldEnableWifiOnStartup();
 
     ///@brief Update DNS and other networking stuff
     ///
     /// Should be called once every second
-    static void update();
+    void update();
 
 private:
     /// @brief Callback used for captive portal webserver
@@ -92,24 +94,25 @@ private:
     /// @param request Request to check and handle captive portal for
     /// @return true If not handling captive portal
     /// @return false If handling captive portal
-    static bool captivePortal(AsyncWebServerRequest* request);
+    bool captivePortal(AsyncWebServerRequest* request);
 
     /// @brief Launch access point if client connection fails
     /// @return true If connected as client
     /// @return false If connection failed and access point was opened
-    static bool handleClientFailsave();
+    bool handleClientFailsave();
 
     /// @brief Configure wifi for client mode
-    static void startClient();
+    void startClient();
     /// @brief Configure wifi for access point mode
-    static void startAccessPoint(bool persistent = true);
+    void startAccessPoint(bool persistent = true);
 
 private:
-    static const IPAddress AP_IP;
-    static const IPAddress AP_NETMASK;
-    static DNSServer dnsServer; // DNS server for captive portal
-    static NetworkConfig config;
-    static AsyncWebServer server; /// Webserver for OTA
-    static WiFiState savedState;
-    static bool isInitialized;
+    const IPAddress AP_IP = {192, 168, 4, 1};
+    const IPAddress AP_NETMASK = {255, 255, 255, 0};
+    DNSServer dnsServer; // DNS server for captive portal
+    AsyncWebServer server {80}; /// Webserver for OTA
+    WiFiState savedState;
+    bool isInitialized = false;
+    Config& config;
+    Mqtt mqtt;
 }; // namespace Networking

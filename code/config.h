@@ -1,7 +1,5 @@
 #pragma once
 
-#if defined(ESP8266) || defined(ESP32)
-
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <DNSServer.h>
@@ -45,19 +43,16 @@ struct MqttConfig
 class Config
 {
 public:
-    ///@brief Static class has no constructor
-    Config() = delete;
-
-    static void initConfig();
-    static NetworkConfig& getNetworkConfig();
-    static MqttConfig& getMqttConfig();
-    static void setDefaultConfig();
-    static void save();
-    static void createJson(JsonDocument& output);
+    
+    void initConfig();
+    NetworkConfig& getNetworkConfig();
+    MqttConfig& getMqttConfig();
+    void setDefaultConfig();
+    void save();
+    void createJson(JsonDocument& output);
 
 private:
-    static NetworkConfig networkConfig;
-    static MqttConfig mqttConfig;
+    NetworkConfig networkConfig;
+    MqttConfig mqttConfig;
 }; // namespace Networking
 
-#endif

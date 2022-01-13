@@ -3,12 +3,15 @@
 #endif
 
 #include <AceButton.h>
+#include <ESPAsyncWebServer.h>
 #include <FastLED.h>
 
+#include "Config.h"
 #include "Constants.h"
 #include "Menu.h"
+#include "Mqtt.h"
+#include "Networking.h"
 #include "TreeLight.h"
-
 using namespace ace_button;
 
 #if defined(ESP8266)
@@ -20,13 +23,9 @@ constexpr uint8_t buttonPin = 2;
 AceButton button(buttonPin);
 TreeLight light;
 Menu menu;
+Config config;
+Networking networking {config};
 bool wifiEnabled = false;
-
-#include <ESPAsyncWebServer.h>
-
-#include "Config.h"
-#include "Mqtt.h"
-#include "Networking.h"
 
 void init_config()
 {
@@ -34,13 +33,13 @@ void init_config()
     wifi_get_macaddr(STATION_IF, mac);
     sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
-    Config::initConfig();
+    config.initConfig();
     DEBUGLN(WiFi.getMode());
     DEBUGLN(WiFi.getAutoConnect());
-    if (Networking::shouldEnableWifiOnStartup())
+    if (networking.shouldEnableWifiOnStartup())
     {
         DEBUGLN("Wifi enabled");
-        Networking::initOrResume(light);
+        networking.initOrResume(light);
         wifiEnabled = true;
     }
     else
@@ -53,15 +52,14 @@ void toggle_wifi()
     if (!wifiEnabled)
     {
         wifiEnabled = true;
-        Networking::initOrResume(light);
+        networking.initOrResume(light);
     }
     else
     {
         wifiEnabled = false;
-        Networking::stop();
+        networking.stop();
     }
 }
-
 
 void selectBrightness()
 {
@@ -170,7 +168,7 @@ void loop()
     delay(1);
 
 #if defined(ESP8266) || defined(ESP32)
-    EVERY_N_SECONDS(1) { Networking::update(); }
+    EVERY_N_SECONDS(1) { networking.update(); }
 #endif
 
 #ifdef DEBUG_PRINT

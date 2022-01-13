@@ -3,14 +3,14 @@
 #include <ArduinoJson.h>
 
 #include "Constants.h"
+#include "config.h"
 
 class Mqtt
 {
 public:
-    ///@brief Static class has no constructor
-    Mqtt() = delete;
+    Mqtt(Config& config) { }
 
-    static void getStatusJsonString(JsonObject& output);
+    void getStatusJsonString(JsonObject& output);
 
 private:
 }; // namespace Mqtt

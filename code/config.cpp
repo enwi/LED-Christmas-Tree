@@ -1,6 +1,7 @@
 #include "Config.h"
 
-constexpr int documentSize = 1024;
+constexpr int documentSizeConfig = 1024;
+constexpr int documentSizeEffect = 128;
 
 void Config::initConfig()
 {
@@ -17,7 +18,7 @@ void Config::initConfig()
             {
                 DEBUGLN("Opened config file");
 
-                StaticJsonDocument<documentSize> json;
+                StaticJsonDocument<documentSizeConfig> json;
 
                 DeserializationError error = deserializeJson(json, configFile);
                 if (error)
@@ -31,13 +32,42 @@ void Config::initConfig()
                 }
                 networkConfig.fromJson(json["wifi"]);
                 mqttConfig.fromJson(json["mqtt"]);
+                configFile.close();
             }
         }
         else
         {
             DEBUGLN("Config file does not exist");
             setDefaultConfig();
-            save();
+            saveConfig();
+        }
+        if (SPIFFS.exists("/effect.json"))
+        {
+            DEBUGLN("Reading effect file");
+            File effectFile = SPIFFS.open("/effect.json", "r");
+
+            if (effectFile)
+            {
+                DEBUGLN("Opened effect file");
+                StaticJsonDocument<documentSizeEffect> json;
+                DeserializationError error = deserializeJson(json, effectFile);
+                if (error)
+                {
+                    DEBUGLN(F("Failed to read file, using default effect config"));
+                    effectConfig = {};
+                }
+                else
+                {
+                    DEBUGLN(F("Successfully loaded effect file"));
+                }
+                effectConfig.fromJson(json.as<JsonObject>());
+                effectFile.close();
+            }
+        }
+        else
+        {
+            DEBUGLN("Effect file does not exist");
+            // No need to create a default file, because the EffectConfig is initialized to default values
         }
     }
     else
@@ -57,6 +87,11 @@ MqttConfig& Config::getMqttConfig()
     return mqttConfig;
 }
 
+EffectConfig& Config::getEffectConfig()
+{
+    return effectConfig;
+}
+
 void Config::setDefaultConfig()
 {
     char ssid[33] = {};
@@ -64,12 +99,12 @@ void Config::setDefaultConfig()
     networkConfig.apSsid = ssid;
 }
 
-void Config::save()
+void Config::saveConfig()
 {
     DEBUGLN("Writing config file");
     File configFile = SPIFFS.open("/config.json", "w");
 
-    StaticJsonDocument<documentSize> json;
+    StaticJsonDocument<documentSizeConfig> json;
     createJson(json);
 
     if (serializeJson(json, configFile) == 0)
@@ -90,6 +125,27 @@ void Config::createJson(JsonDocument& output)
     networkConfig.toJson(wifi);
     JsonObject mqtt = output.createNestedObject("mqtt");
     mqttConfig.toJson(mqtt);
+}
+
+void Config::saveEffect()
+{
+    DEBUGLN("Writing effect file");
+    File effectFile = SPIFFS.open("/effect.json", "w");
+
+    StaticJsonDocument<documentSizeEffect> json; 
+    JsonObject o = json.to<JsonObject>();
+    effectConfig.toJson(o);
+
+    if (serializeJson(json, effectFile) == 0)
+    {
+        DEBUGLN(F("Failed to write to file"));
+    }
+    else
+    {
+        DEBUGLN(F("Successfully updated effect."));
+    }
+
+    effectFile.close();
 }
 
 void NetworkConfig::fromJson(const JsonObjectConst& object)
@@ -144,3 +200,18 @@ void MqttConfig::toJson(JsonObject& object) const
     object["password"] = password;
 }
 
+void EffectConfig::fromJson(const JsonObjectConst& object)
+{
+    speed = object["speed"];
+    brightnessLevel = object["brightness"];
+    currentEffectType = (EffectType)object["effect"].as<int>();
+    colorSelection = object["color"];
+}
+
+void EffectConfig::toJson(JsonObject& object) const
+{
+    object["speed"] = (int)speed;
+    object["brightness"] = (int)brightnessLevel;
+    object["effect"] = (int)currentEffectType;
+    object["color"] = (int)colorSelection;
+}

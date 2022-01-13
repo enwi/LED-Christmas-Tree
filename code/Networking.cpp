@@ -36,7 +36,7 @@ void Networking::initWifi()
     if (!config.getNetworkConfig().wifiEnabled)
     {
         config.getNetworkConfig().wifiEnabled = true;
-        config.save();
+        config.saveConfig();
     }
     isInitialized = true;
 }
@@ -84,7 +84,7 @@ void Networking::stop()
     WiFi.mode(WIFI_SHUTDOWN, &savedState);
     // Save off state for reboot
     config.getNetworkConfig().wifiEnabled = false;
-    config.save();
+    config.saveConfig();
     DEBUGLN("Wifi stopped");
 }
 
@@ -92,7 +92,7 @@ void Networking::resume()
 {
     WiFi.mode(WIFI_RESUME, &savedState);
     config.getNetworkConfig().wifiEnabled = true;
-    config.save();
+    config.saveConfig();
     DEBUGLN("Resuming wifi");
     if (handleClientFailsave())
     {
@@ -234,7 +234,7 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
     MqttConfig& mqtt = config.getMqttConfig();
     mqtt.fromJson(data["mqtt"]);
 
-    config.save();
+    config.saveConfig();
 
     response->print("OK");
     request->send(response);

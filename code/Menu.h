@@ -39,13 +39,15 @@ public:
     void setNumSubSelections(uint8_t num) { numSelections = num; }
 
 private:
-    Callback* actions[3] = {};
+    static constexpr uint8_t numLongPressModes = 4;
+    Callback* actions[numLongPressModes] = {};
     // Selected mode for long press (1 after 1s, 2 after 2s, 3 after 3s, 1 after 1s)
     uint8_t longPressMode = 0;
     MenuState state = MenuState::mainSelect;
     Callback* brightnessCallback = nullptr;
     uint8_t subSelection = 0;
     uint8_t numSelections = 1;
+
 };
 
 #endif

@@ -7,6 +7,9 @@
 class TreeColors
 {
 public:
+    // Initialize colors to random values
+    void initRandomColors();
+
     // Set color selection and update colors if changed
     void setSelection(uint8_t index);
     uint8_t getSelection() const { return selection; }

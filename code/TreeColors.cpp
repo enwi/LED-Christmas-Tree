@@ -109,6 +109,12 @@ namespace
 
 } // namespace
 
+void TreeColors::initRandomColors()
+{
+    color1 = CRGB(random(0, 255), random(0, 255), random(0, 255));
+    color2 = CRGB(random(0, 255), random(0, 255), random(0, 255));
+}
+
 void TreeColors::setSelection(uint8_t index)
 {
     if (index != selection)

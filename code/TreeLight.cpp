@@ -28,6 +28,7 @@ void TreeLight::init(Menu& menu)
     randomSeed(analogRead(A0) * 17 + 23);
 #endif
 
+    colors.initRandomColors();
     colors.setSelection(0);
 }
 
@@ -219,6 +220,9 @@ void TreeLight::displayMenu()
             break;
         case 3:
             leds(0, 7) = color;
+            break;
+        case 4:
+            leds(0, 7) = CRGB::Blue;
             break;
         }
     }

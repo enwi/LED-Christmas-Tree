@@ -40,9 +40,11 @@ bool Menu::handleButton(uint8_t eventType)
         }
         break;
     case AceButton::kEventRepeatPressed:
-        if (state == MenuState::mainSelect && ++longPressMode > 3)
+        if (state == MenuState::mainSelect && ++longPressMode > numLongPressModes)
         {
-            longPressMode = 1;
+            // Leave menu (prevent more repeat events from triggering another selection)
+            state = MenuState::closing;
+            longPressMode = 0;
             return true;
         }
         else if (state == MenuState::brightnessSelect || state == MenuState::colorSelect)
@@ -93,7 +95,7 @@ bool Menu::handleButton(uint8_t eventType)
 
 void Menu::setMainCallback(uint8_t selection, Callback* cb)
 {
-    if (selection < 1 || selection > 3)
+    if (selection < 1 || selection > numLongPressModes)
     {
         return;
     }

@@ -22,7 +22,6 @@ TreeLight light;
 Menu menu;
 bool wifiEnabled = false;
 
-#if defined(ESP8266) || defined(ESP32)
 #include <ESPAsyncWebServer.h>
 
 #include "Config.h"
@@ -36,7 +35,6 @@ void init_config()
     sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     Config::initConfig();
-    WiFi.persistent(true);
     DEBUGLN(WiFi.getMode());
     DEBUGLN(WiFi.getAutoConnect());
     if (Networking::shouldEnableWifiOnStartup())
@@ -64,13 +62,6 @@ void toggle_wifi()
     }
 }
 
-#else
-void init_config() { }
-void toggle_wifi()
-{
-    wifiEnabled = !wifiEnabled;
-}
-#endif
 
 void selectBrightness()
 {

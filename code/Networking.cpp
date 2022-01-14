@@ -214,7 +214,15 @@ void Networking::handleConfigApiGet(AsyncWebServerRequest* request)
     buffer.reserve(512);
     StaticJsonDocument<1024> document;
     config.createJson(document);
-    // TODO: Remove passwords
+
+    auto&& w = document["wifi"];
+    w.remove("client_password");
+    w.remove("ap_password");
+    w["client_has_password"] = config.getNetworkConfig().clientPassword.length() != 0;
+    w["ap_has_password"] = config.getNetworkConfig().apPassword.length() != 0;
+    auto&& m = document["mqtt"];
+    m.remove("has_password");
+
     serializeJson(document, buffer);
 
     request->send(200, "application/json", buffer);
@@ -246,9 +254,11 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
     response->print("OK");
     request->send(response);
 
-    // TODO: Check whether config changed and if restard is needed
-    delay(1000);
-    ESP.restart();
+    if (changed)
+    {
+        delay(1000);
+        ESP.restart();
+    }
 }
 
 void Networking::handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light)

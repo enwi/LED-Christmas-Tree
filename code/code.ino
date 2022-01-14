@@ -69,13 +69,32 @@ void toggle_wifi()
 void save_effect()
 {
     EffectConfig& effectConfig = config.getEffectConfig();
-    effectConfig.brightnessLevel = light.getBrightnessLevel();
+    bool changed = false;
+    if (effectConfig.brightnessLevel != light.getBrightnessLevel())
+    {
+        effectConfig.brightnessLevel = light.getBrightnessLevel();
+        changed |= true;
+    }
+    if (effectConfig.colorSelection != light.getColors().getSelection())
+    {
+        effectConfig.colorSelection = light.getColors().getSelection();
+        changed |= true;
+    }
+    if (effectConfig.speed != (uint8_t)light.getSpeed())
+    {
+        effectConfig.speed = (uint8_t)light.getSpeed();
+        changed |= true;
+    }
+    if (effectConfig.currentEffectType != light.getEffectType())
+    {
+        effectConfig.currentEffectType = light.getEffectType();
+        changed |= true;
+    }
 
-    effectConfig.colorSelection = light.getColors().getSelection();
-    effectConfig.speed = (uint8_t)light.getSpeed();
-    effectConfig.currentEffectType = light.getEffectType();
-
-    config.saveEffect();
+    if (changed)
+    {
+        config.saveEffect();
+    }
 }
 
 void selectBrightness()

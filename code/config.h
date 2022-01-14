@@ -23,21 +23,35 @@ struct NetworkConfig
     String apPassword;
     bool wifiEnabled = false;
 
+    /// @brief Verify that the object can be parsed
+    /// @returns true if fromJson can be executed
+    bool verify(const JsonObjectConst& object) const;
     void fromJson(const JsonObjectConst& object);
     void toJson(JsonObject& object) const;
+
+    /// @brief Update all fields in object, if possible
+    /// @returns true when any value was changed
+    bool tryUpdate(const JsonObjectConst& object);
 };
 
 struct MqttConfig
 {
     bool enabled = false;
     String server;
-    int port = 1883;
+    unsigned int port = 1883;
     String id = "LedChristmasTree";
     String user;
     String password;
 
+    /// @brief Verify that the object can be parsed
+    /// @returns true if fromJson can be executed
+    bool verify(const JsonObjectConst& object) const;
     void fromJson(const JsonObjectConst& object);
     void toJson(JsonObject& object) const;
+
+    /// @brief Update all fields in object, if possible
+    /// @returns true when any value was changed
+    bool tryUpdate(const JsonObjectConst& object);
 };
 
 struct EffectConfig
@@ -47,6 +61,9 @@ struct EffectConfig
     EffectType currentEffectType = EffectType::off;
     uint8_t colorSelection = 0;
 
+    /// @brief Verify that the object can be parsed
+    /// @returns true if fromJson can be executed
+    bool verify(const JsonObjectConst& object) const;
     void fromJson(const JsonObjectConst& object);
     void toJson(JsonObject& object) const;
 };
@@ -63,6 +80,10 @@ public:
     void createJson(JsonDocument& output);
 
     void saveEffect();
+
+private:
+    void readConfig();
+    void readEffect();
 
 private:
     NetworkConfig networkConfig;

@@ -224,17 +224,24 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
 {
     AsyncResponseStream* response = request->beginResponseStream("text/html");
 
-    DEBUG("Received new config");
+    DEBUGLN("Received new config");
 
     JsonObject&& data = json->as<JsonObject>();
 
     NetworkConfig& wifi = config.getNetworkConfig();
-    wifi.fromJson(data["wifi"]);
+    bool changed = wifi.tryUpdate(data["wifi"]);
 
     MqttConfig& mqtt = config.getMqttConfig();
-    mqtt.fromJson(data["mqtt"]);
+    changed |= mqtt.tryUpdate(data["mqtt"]);
 
-    config.saveConfig();
+    if (changed)
+    {
+        config.saveConfig();
+    }
+    else
+    {
+        DEBUGLN("Config did not change");
+    }
 
     response->print("OK");
     request->send(response);

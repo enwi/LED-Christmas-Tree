@@ -184,8 +184,18 @@ void Config::readConfig()
         }
         else
         {
-            DEBUGLN(F("Invalid file contents, removing config.json"));
-            SPIFFS.remove("/config.json");
+            DEBUGLN(F("Invalid file contents"));
+            setDefaultConfig();
+            if (networkConfig.tryUpdate(jWifi) || mqttConfig.tryUpdate(jMqtt))
+            {
+                DEBUGLN(F("Read partial data from config.json"));
+                // Check wifi configuration for backwards compatibility
+                if (!jWifi.containsKey("wifi_enabled") && networkConfig.clientEnabled)
+                {
+                    networkConfig.wifiEnabled = true;
+                }
+            }
+            saveConfig();
         }
     }
 }
@@ -217,8 +227,13 @@ void Config::readEffect()
         }
         else
         {
-            DEBUGLN(F("Invalid file contents, removing effect.json"));
-            SPIFFS.remove("/effect.json");
+            DEBUGLN(F("Invalid file contents"));
+            effectConfig = {};
+            if (effectConfig.tryUpdate(obj))
+            {
+                DEBUGLN(F("Read partial data from effect.json"));
+            }
+            saveEffect();
         }
     }
 }

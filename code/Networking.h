@@ -63,14 +63,14 @@ public:
     ///
     ///@param request Request coming from webserver
     ///@param json JSON object containing configuration of wifi, mqtt, etc.
-    void handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant* json);
+    void handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant& json);
 
     ///@brief Handle the set leds api
     ///
     ///@param request Request coming from webserver
     ///@param json JSON object containing values of brightness, speed, effect, etc.
     ///@param light TreeLight to control
-    void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light);
+    void handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant& json, TreeLight& light);
 
     /// @brief Check if the given string is an ip address
     ///
@@ -99,7 +99,7 @@ private:
     /// @brief Launch access point if client connection fails
     /// @return true If connected as client
     /// @return false If connection failed and access point was opened
-    bool handleClientFailsave();
+    bool handleClientFailsafe();
 
     /// @brief Configure wifi for client mode
     void startClient();
@@ -115,4 +115,5 @@ private:
     bool isInitialized = false;
     Config& config;
     Mqtt mqtt;
+    bool restartESP = false; /// Restart ESP after config change
 }; // namespace Networking

@@ -78,7 +78,7 @@ void Config::initConfig()
     else
     {
         DEBUGLN("Failed to mount FS");
-        Config::setDefaultConfig();
+        setDefaultConfig();
     }
 }
 
@@ -283,6 +283,10 @@ void NetworkConfig::toJson(JsonObject& object) const
 
 bool NetworkConfig::tryUpdate(const JsonObjectConst& object)
 {
+    if (object.isNull())
+    {
+        return false;
+    }
     bool changed = false;
     changed |= updateField(object, "client_enabled", clientEnabled);
     changed |= updateField(object, "client_dhcp_enabled", dhcpEnabled);
@@ -329,6 +333,11 @@ void MqttConfig::toJson(JsonObject& object) const
 
 bool MqttConfig::tryUpdate(const JsonObjectConst& object)
 {
+    if (object.isNull())
+    {
+        return false;
+    }
+
     bool changed = false;
     changed |= updateField(object, "enabled", enabled);
     changed |= updateField(object, "server", server);
@@ -364,6 +373,11 @@ void EffectConfig::toJson(JsonObject& object) const
 
 bool EffectConfig::tryUpdate(const JsonObjectConst& object)
 {
+    if (object.isNull())
+    {
+        return false;
+    }
+
     bool changed = false;
     changed |= updateField(object, "speed", speed);
     changed |= updateField(object, "brightness", brightnessLevel);

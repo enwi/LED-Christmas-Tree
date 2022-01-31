@@ -52,14 +52,12 @@ void Networking::initServer(TreeLight& light)
         "/api/status", HTTP_GET, [&light, this](AsyncWebServerRequest* request) { handleStatusApi(request, &light); });
     server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* r) { handleConfigApiGet(r); });
 
-    AsyncCallbackJsonWebHandler* handlerSetLeds = new AsyncCallbackJsonWebHandler(
-        "/api/set_leds", [&light, this](AsyncWebServerRequest* request, JsonVariant& json) {
-            handleSetLedsApi(request, &json, &light);
-        });
+    AsyncCallbackJsonWebHandler* handlerSetLeds = new AsyncCallbackJsonWebHandler("/api/set_leds",
+        [&light, this](AsyncWebServerRequest* request, JsonVariant& json) { handleSetLedsApi(request, json, light); });
     server.addHandler(handlerSetLeds);
 
     AsyncCallbackJsonWebHandler* handlerSetConfig = new AsyncCallbackJsonWebHandler("/api/config",
-        [this](AsyncWebServerRequest* request, JsonVariant& json) { handleConfigApiPost(request, &json); });
+        [this](AsyncWebServerRequest* request, JsonVariant& json) { handleConfigApiPost(request, json); });
     server.addHandler(handlerSetConfig);
 
     auto indexHandler = [this](AsyncWebServerRequest* r) { handleIndex(r); };
@@ -94,7 +92,7 @@ void Networking::resume()
     config.getNetworkConfig().wifiEnabled = true;
     config.saveConfig();
     DEBUGLN("Resuming wifi");
-    if (handleClientFailsave())
+    if (handleClientFailsafe())
     {
         // server.begin();
         DEBUGLN("Wifi resumed");
@@ -228,13 +226,12 @@ void Networking::handleConfigApiGet(AsyncWebServerRequest* request)
     request->send(200, "application/json", buffer);
 }
 
-void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant* json)
+void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant& json)
 {
-    AsyncResponseStream* response = request->beginResponseStream("text/html");
 
     DEBUGLN("Received new config");
 
-    JsonObject&& data = json->as<JsonObject>();
+    JsonObject&& data = json.as<JsonObject>();
 
     NetworkConfig& wifi = config.getNetworkConfig();
     bool changed = wifi.tryUpdate(data["wifi"]);
@@ -251,24 +248,23 @@ void Networking::handleConfigApiPost(AsyncWebServerRequest* request, JsonVariant
         DEBUGLN("Config did not change");
     }
 
-    response->print("OK");
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", "OK");
     request->send(response);
 
     if (changed)
     {
-        delay(1000);
-        ESP.restart();
+        restartESP = true;
     }
 }
 
-void Networking::handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant* json, TreeLight* light)
+void Networking::handleSetLedsApi(AsyncWebServerRequest* request, JsonVariant& json, TreeLight& light)
 {
     AsyncResponseStream* response = request->beginResponseStream("text/html");
-    JsonObject&& data = json->as<JsonObject>();
-    light->setBrightnessLevel(data["brightness"]);
-    light->setSpeed(static_cast<Speed>((uint8_t)data["speed"]));
-    light->setEffect(static_cast<EffectType>((uint8_t)data["effect"]));
-    light->setColorSelection((uint8_t)data["color"]);
+    JsonObject&& data = json.as<JsonObject>();
+    light.setBrightnessLevel(data["brightness"]);
+    light.setSpeed(static_cast<Speed>((uint8_t)data["speed"]));
+    light.setEffect(static_cast<EffectType>((uint8_t)data["effect"]));
+    light.setColorSelection((uint8_t)data["color"]);
     response->print("OK");
     request->send(response);
 }
@@ -295,6 +291,11 @@ void Networking::update()
 {
     // handle DNS
     dnsServer.processNextRequest();
+
+    if (restartESP)
+    {
+        ESP.restart();
+    }
 }
 
 bool Networking::captivePortal(AsyncWebServerRequest* request)
@@ -324,13 +325,14 @@ bool Networking::captivePortal(AsyncWebServerRequest* request)
     return true;
 }
 
-bool Networking::handleClientFailsave()
+bool Networking::handleClientFailsafe()
 {
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED)
     {
 
         DEBUG('.');
+        // TODO: Make async and remove delay
         delay(1000);
         if (millis() - start > 15000)
         {
@@ -367,9 +369,8 @@ void Networking::startClient()
     WiFi.mode(WIFI_STA);
     WiFi.begin(wifi.clientSsid, wifi.clientPassword);
     DEBUG("Connecting to WiFi ..");
-    uint64_t start = millis();
 
-    if (handleClientFailsave())
+    if (handleClientFailsafe())
     {
         DEBUG("Connected: ");
         DEBUGLN(WiFi.localIP());

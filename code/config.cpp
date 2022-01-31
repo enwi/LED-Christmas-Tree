@@ -177,7 +177,7 @@ void Config::readConfig()
         configFile.close();
         const auto& jWifi = json["wifi"];
         const auto& jMqtt = json["mqtt"];
-        if (networkConfig.verify(jWifi) && mqttConfig.verify(jWifi))
+        if (networkConfig.verify(jWifi) && mqttConfig.verify(jMqtt))
         {
             networkConfig.fromJson(jWifi);
             mqttConfig.fromJson(jMqtt);
@@ -243,9 +243,9 @@ bool NetworkConfig::verify(const JsonObjectConst& object) const
     return object["client_enabled"].is<bool>() && object["client_dhcp_enabled"].is<bool>()
         && object["client_ssid"].is<const char*>() && object["client_password"].is<const char*>()
         && object["client_gateway"].is<const char*>() && object["client_dns"].is<const char*>()
-        && object["client_dns"].is<const char*>() && object["client_mask"].is<const char*>()
-        && object["ap_enabled"].is<bool>() && object["ap_ssid"].is<const char*>()
-        && object["ap_password"].is<const char*>() && object["wifi_enabled"].is<bool>();
+        && object["client_mask"].is<const char*>() && object["ap_enabled"].is<bool>()
+        && object["ap_ssid"].is<const char*>() && object["ap_password"].is<const char*>()
+        && object["wifi_enabled"].is<bool>();
 }
 
 void NetworkConfig::fromJson(const JsonObjectConst& object)
@@ -360,4 +360,16 @@ void EffectConfig::toJson(JsonObject& object) const
     object["brightness"] = (int)brightnessLevel;
     object["effect"] = (int)currentEffectType;
     object["color"] = (int)colorSelection;
+}
+
+bool EffectConfig::tryUpdate(const JsonObjectConst& object)
+{
+    bool changed = false;
+    changed |= updateField(object, "speed", speed);
+    changed |= updateField(object, "brightness", brightnessLevel);
+    int et = (int)currentEffectType;
+    changed |= updateField(object, "effect", et);
+    currentEffectType = (EffectType)et;
+    changed |= updateField(object, "color", colorSelection);
+    return changed;
 }

@@ -66,6 +66,10 @@ struct EffectConfig
     bool verify(const JsonObjectConst& object) const;
     void fromJson(const JsonObjectConst& object);
     void toJson(JsonObject& object) const;
+
+    /// @brief Update all fields in object, if possible
+    /// @returns true when any value was changed
+    bool tryUpdate(const JsonObjectConst& object);
 };
 
 class Config

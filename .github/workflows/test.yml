@@ -2,7 +2,13 @@
 name: test
 
 # Run the workflow when a commit is pushed or a Pull Request is opened
-on: [push, pull_request]
+on: 
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '*.*.*'
+  pull_request:
 
 # List of jobs that will be run concurrently
 jobs:

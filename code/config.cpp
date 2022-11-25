@@ -186,7 +186,10 @@ void Config::readConfig()
         {
             DEBUGLN(F("Invalid file contents"));
             setDefaultConfig();
-            if (networkConfig.tryUpdate(jWifi) || mqttConfig.tryUpdate(jMqtt))
+            bool partial = false;
+            partial |= networkConfig.tryUpdate(jWifi);
+            partial |= mqttConfig.tryUpdate(jMqtt);
+            if (partial)
             {
                 DEBUGLN(F("Read partial data from config.json"));
                 // Check wifi configuration for backwards compatibility

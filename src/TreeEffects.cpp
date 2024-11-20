@@ -1,5 +1,6 @@
 #include "TreeEffects.h"
 
+#include <FastLED.h>
 #include <stdint.h>
 
 #include "TreeLight.h"
@@ -43,9 +44,9 @@ namespace
 class OffEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
-        leds.fill_solid(CRGB::Black);
+        leds.ClearTo(CRGB::Black);
         return {};
     }
 
@@ -55,9 +56,9 @@ public:
 class SolidEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
-        leds.fill_solid(lights.firstColor());
+        leds.ClearTo(toRgb(lights.firstColor()));
         EffectControl result;
         result.allowAutoColorChange = true;
         return result;
@@ -69,14 +70,14 @@ public:
 class HorizontalRainbowEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         if (!lights.isColorPalette())
         {
             uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
-            leds(0, 7).fill_rainbow(hue, rainbowDeltaHue);
-            leds(8, 11).fill_rainbow(hue, rainbowDeltaHue * 2);
-            leds[12] = leds[0];
+            fillRainbow(leds, 0, 7, hue, rainbowDeltaHue);
+            fillRainbow(leds, 8, 11, hue, rainbowDeltaHue * 2);
+            leds.SetPixelColor(12, toRgb(CHSV(hue, 240, 255)));
         }
         else
         {
@@ -84,16 +85,16 @@ public:
             uint8_t colorIndex = startIndex;
             for (uint8_t i = 0; i < 8; ++i)
             {
-                leds[i] = lights.getPaletteColor(colorIndex);
+                leds.SetPixelColor(i, toRgb(lights.getPaletteColor(colorIndex)));
                 colorIndex += rainbowDeltaHue;
             }
             colorIndex = startIndex;
             for (uint8_t i = 8; i < 12; ++i)
             {
-                leds[i] = lights.getPaletteColor(colorIndex);
+                leds.SetPixelColor(i, toRgb(lights.getPaletteColor(colorIndex)));
                 colorIndex += rainbowDeltaHue * 2;
             }
-            leds[12] = leds[0];
+            leds.SetPixelColor(12, toRgb(lights.getPaletteColor(startIndex)));
         }
         return {};
     }
@@ -107,7 +108,7 @@ private:
 class VerticalRainbowEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         CRGB colors[3];
         uint8_t hue = (uint8_t)(effectTime >> 5); // effectTime / 32 => full rainbow in ~4s
@@ -122,11 +123,11 @@ public:
             colors[2] = lights.getPaletteColor(hue + rainbowDeltaHue * 2);
         }
         // Bottom
-        leds(0, 7).fill_solid(colors[0]);
+        leds.ClearTo(toRgb(colors[0]), 0, 7);
         // Middle
-        leds(8, 11).fill_solid(colors[1]);
+        leds.ClearTo(toRgb(colors[1]), 8, 11);
         // Top
-        leds[12] = colors[2];
+        leds.SetPixelColor(12, toRgb(colors[2]));
 
         return {};
     }
@@ -140,7 +141,7 @@ private:
 class HorizontalGradientEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         EffectControl result;
         fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
@@ -157,9 +158,9 @@ public:
         CRGB cStart = blend(lights.firstColor(), lights.secondColor(), blendStart);
         CRGB cMiddle = blend(lights.firstColor(), lights.secondColor(), ((int)blendStart + blendEnd) / 2);
         CRGB cEnd = blend(lights.firstColor(), lights.secondColor(), blendEnd);
-        leds(0, 7).fill_gradient_RGB(cStart, cEnd);
-        leds(8, 11).fill_gradient_RGB(cStart, cEnd);
-        leds[12] = leds[0];
+        fillGradientRgb(leds, 0, 7, cStart, cEnd);
+        fillGradientRgb(leds, 8, 11, cStart, cEnd);
+        leds.SetPixelColor(12, toRgb(cStart));
 
         return result;
     }
@@ -170,7 +171,7 @@ public:
 class VerticalGradientEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         EffectControl result;
         fract16 blendVal = (uint16_t)(effectTime >> 5); // effectTime / 32 => full gradient in ~4s
@@ -187,9 +188,9 @@ public:
         CRGB cStart = blend(lights.firstColor(), lights.secondColor(), blendStart);
         CRGB cMiddle = blend(lights.firstColor(), lights.secondColor(), ((int)blendStart + blendEnd) / 2);
         CRGB cEnd = blend(lights.firstColor(), lights.secondColor(), blendEnd);
-        leds(0, 7).fill_solid(cStart);
-        leds(8, 11).fill_solid(cMiddle);
-        leds[12] = cEnd;
+        leds.ClearTo(toRgb(cStart), 0, 7);
+        leds.ClearTo(toRgb(cMiddle), 8, 11);
+        leds.SetPixelColor(12, toRgb(cEnd));
 
         return result;
     }
@@ -200,7 +201,7 @@ public:
 class TwinkleFoxEffect : public IEffect
 {
 public:
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         // From FastLED TwinkleFox example by Mark Kriegsman
         uint16_t prng16 = 11337;
@@ -208,8 +209,9 @@ public:
         uint32_t clock32 = effectTime;
         uint8_t backgroundBrightness = bg.getAverageLight();
 
-        for (CRGB& pixel : leds)
+        for (uint8_t i = 0; i < leds.PixelCount(); ++i)
         {
+
             prng16 = nextRandom(prng16);
             uint16_t clockOffset = prng16;
             prng16 = nextRandom(prng16);
@@ -224,17 +226,17 @@ public:
             if (deltaBright >= 32 || (!bg))
             {
                 // New pixel is significantly brighter than background
-                pixel = c;
+                leds.SetPixelColor(i, toRgb(c));
             }
             else if (deltaBright > 0)
             {
                 // Slightly brighter than background, blend
-                pixel = blend(bg, c, deltaBright * 8);
+                leds.SetPixelColor(i, toRgb(blend(bg, c, deltaBright * 8)));
             }
             else
             {
                 // Pixel is not brighter than background
-                pixel = bg;
+                leds.SetPixelColor(i, toRgb(bg));
             }
         }
         EffectControl result;
@@ -289,7 +291,7 @@ public:
         colorChangeTime = 0;
         swapped = false;
     }
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         unsigned long dt = effectTime - colorChangeTime;
         uint16_t fadeTime = 1 << (fadeDuration + 8);
@@ -319,15 +321,15 @@ public:
             c1 = first;
             c2 = second;
         }
-        for (uint8_t i = 0; i < leds.size(); ++i)
+        for (uint8_t i = 0; i < leds.PixelCount(); ++i)
         {
             if ((i & 1) == 0)
             {
-                leds[i] = c1;
+                leds.SetPixelColor(i, toRgb(c1));
             }
             else
             {
-                leds[i] = c2;
+                leds.SetPixelColor(i, toRgb(c2));
             }
         }
         EffectControl result;
@@ -353,14 +355,14 @@ class RunningLightEffect : public IEffect
 {
 public:
     void reset(bool timerOnly) { colorChangeTime = 0; }
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         EffectControl result;
-        uint8_t numLeds = leds.size();
+        uint8_t numLeds = leds.PixelCount();
         const uint8_t lightCount = 4; // max number of lit leds
-        uint8_t nLights = (uint8_t)(effectTime - colorChangeTime >> 9); // effectTime / 512 => about 4 leds per second
-        uint16_t fade = (uint16_t)(effectTime - colorChangeTime >> 0) & 0x1FF;
-        leds.fill_solid(CRGB::Black);
+        uint8_t nLights = (uint8_t)((effectTime - colorChangeTime) >> 9); // effectTime / 512 => about 4 leds per second
+        uint16_t fade = (uint16_t)((effectTime - colorChangeTime) >> 0) & 0x1FF;
+        leds.ClearTo(toRgb(CRGB::Black));
         if (nLights >= numLeds + lightCount)
         {
             nLights = 0;
@@ -378,7 +380,7 @@ public:
                 fadeOut = ease8InOutCubic(fadeOut);
                 CRGB cEnd = lights.firstColor();
                 cEnd.nscale8_video(fadeOut);
-                leds[end] = cEnd;
+                leds.SetPixelColor(end, toRgb(cEnd));
             }
             // Last led is out of bounds or set above
             --end;
@@ -392,14 +394,14 @@ public:
                 fadeIn = ease8InOutCubic(fadeIn);
                 CRGB cStart = lights.firstColor();
                 cStart.nscale8_video(fadeIn);
-                leds[start] = cStart;
+                leds.SetPixelColor(start, toRgb(cStart));
             }
             // First led is out of bounds or set above
             ++start;
 
             if (end >= 0 && start < numLeds)
             {
-                leds(start, end).fill_solid(lights.firstColor());
+                leds.ClearTo(toRgb(lights.firstColor()), start, end);
             }
         }
         else
@@ -501,7 +503,7 @@ public:
         }
     }
 
-    EffectControl runEffect(TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) override
+    EffectControl runEffect(TreeLightView& lights, PixelBus& leds, unsigned long effectTime) override
     {
         IEffect* e = effectList[effectIdx];
         EffectControl result;

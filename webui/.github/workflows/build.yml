@@ -1,0 +1,56 @@
+name: build
+on: [push]
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    name: Build
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - run: npm install
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: compile web files
+        run: |
+          npm run build
+
+      - name: Check folder CPP exists
+        id: check_cpp
+        uses: andstor/file-existence-action@v1
+        with:
+          files: "cpp"
+
+      - name: create cpp folder
+        if: steps.check_cpp.outputs.files_exists != 'true'
+        run: mkdir cpp
+
+      - name: bin2c
+        run: |
+          mv cpp cpp.old
+          mkdir cpp
+          cp ./dist/build.html ./cpp/build.html
+          cd ./cpp/
+          gzip -9 -n build.html
+          python ../tools/bin2c.py --progmem build.html.gz
+          rm -f build.html.gz
+          cd ..
+
+
+      - name: Push to git
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Automated binaries publications
+          commit_options: '--no-verify --signoff'
+          file_pattern: cpp/*
+

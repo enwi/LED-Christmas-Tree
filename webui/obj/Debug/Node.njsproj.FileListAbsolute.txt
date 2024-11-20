@@ -1,0 +1,3 @@
+C:\Users\Jan\Documents\Nodeduino\Baum\LED-Christmas-Tree\code\webui\obj\Debug\Node.njsproj.AssemblyReference.cache
+C:\Users\Jan\Documents\Nodeduino\Baum\LED-Christmas-Tree\code\webui\obj\Debug\Node.njsproj.CoreCompileInputs.cache
+C:\Users\Jan\Documents\Nodeduino\Baum\LED-Christmas-Tree\code\webui\bin\Microsoft.NodejsTools.WebRole.dll

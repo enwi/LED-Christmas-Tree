@@ -1,23 +1,29 @@
 #include "TreeLight.h"
 
+#include <Constants.h>
+
 void TreeLight::init(Menu& menu)
 {
     this->menu = &menu;
     effectList = createEffects();
     currentEffect = effectList[0];
     currentEffect->reset(false);
-#if defined(ESP32) || defined(ESP8266)
-    FastLED.addLeds<APA106, pin, RGB>(leds, numLeds);
-#else
-    FastLED.addLeds<WS2812, pin, GRB>(leds, numLeds);
+#if defined(ESP8266)
+    // Uses RX pin instead of GPIO pin
+    pinMode(pin, INPUT);
 #endif
+    leds.reset(new PixelBus(numLeds, pin));
+    leds->Begin();
 
     setBrightnessLevel(4);
-    FastLED.setCorrection(LEDColorCorrection::Typical8mmPixel);
-    leds.fill_solid(CRGB::Black);
-    FastLED.show();
+    // Already in type
+    // FastLED.setCorrection(LEDColorCorrection::Typical8mmPixel);
+    leds->ClearTo(RgbColor(0, 0, 0));
+    leds->Show();
     lastUpdate = millis();
-    ledBackup.fill_solid(CRGB::Black);
+    lastFpsCheck = lastUpdate;
+    fpsCounter = 0;
+    // ledBackup.fill_solid(CRGB::Black);
 
     // Init random seed
 #if defined(ESP32)
@@ -54,6 +60,7 @@ void TreeLight::getStatusJsonString(JsonObject& output)
 
 void TreeLight::nextEffect()
 {
+    DEBUGLN("Next effect");
     currentEffectType = (EffectType)((int)currentEffectType + 1);
     if (currentEffectType >= EffectType::maxValue)
     {
@@ -65,6 +72,7 @@ void TreeLight::nextEffect()
 
 void TreeLight::setEffect(EffectType e)
 {
+    DEBUGLN("Set effect");
     if (e != currentEffectType && e < EffectType::maxValue)
     {
         currentEffectType = e;
@@ -75,6 +83,7 @@ void TreeLight::setEffect(EffectType e)
 
 void TreeLight::nextSpeed()
 {
+    DEBUGLN("Next speed");
     // Web interface speed may be different from these stages
     if (speed <= (uint8_t)Speed::stopped)
     {
@@ -96,6 +105,7 @@ void TreeLight::nextSpeed()
 
 void TreeLight::setSpeed(Speed s)
 {
+    DEBUGLN("Set speed");
     if ((uint8_t)s != speed && s < Speed::maxValue)
     {
         speed = (uint8_t)s;
@@ -107,7 +117,11 @@ void TreeLight::update()
     unsigned long t = millis();
     if (t - lastUpdate < 10)
     {
-        FastLED.show();
+        if (leds->CanShow())
+        {
+            fpsCounter++;
+            leds->Show();
+        }
         return;
     }
     if (menu->isActive())
@@ -120,14 +134,18 @@ void TreeLight::update()
         runEffect();
     }
     lastUpdate = t;
-    FastLED.show();
+    if (leds->CanShow())
+    {
+        fpsCounter++;
+        leds->Show();
+    }
 }
 
 void TreeLight::resetEffect(bool timerOnly)
 {
     effectTime = 0;
     // Save last effect colors
-    ledBackup = leds;
+    // ledBackup = leds;
     if (currentEffect)
     {
         currentEffect->reset(timerOnly);
@@ -165,7 +183,7 @@ void TreeLight::setBrightnessLevel(uint8_t level)
         scale = 255;
         break;
     }
-    FastLED.setBrightness(scale);
+    leds->SetLuminance(scale);
 }
 
 void TreeLight::initColorMenu()
@@ -174,6 +192,15 @@ void TreeLight::initColorMenu()
     menu->setMenuState(Menu::MenuState::colorSelect);
     menu->setNumSubSelections(8);
     menu->setSubSelection(colors.getSelection());
+}
+
+unsigned int TreeLight::getFPS()
+{
+    unsigned long now = millis();
+    unsigned int res = fpsCounter * 1000 / (now - lastFpsCheck);
+    lastFpsCheck = now;
+    fpsCounter = 0;
+    return res;
 }
 
 void TreeLight::runEffect()
@@ -185,7 +212,7 @@ void TreeLight::runEffect()
     TreeLightView v(*this);
     if (currentEffect != nullptr)
     {
-        c = currentEffect->runEffect(v, leds, effectTime);
+        c = currentEffect->runEffect(v, *leds, effectTime);
     }
 
     if (speed > 0 && c.fadeOver && effectTime < startFadeIn)
@@ -194,7 +221,7 @@ void TreeLight::runEffect()
         // Scale 0 to startFadeIn
         uint8_t fade = min((startFadeIn - effectTime) * 256 / startFadeIn, (unsigned long)255);
         fade = ease8InOutCubic(fade);
-        leds.nblend(ledBackup, fade);
+        // leds.nblend(ledBackup, fade);
     }
     else if (c.allowAutoColorChange && effectTime > colorDuration)
     {
@@ -206,29 +233,29 @@ void TreeLight::runEffect()
 
 void TreeLight::displayMenu()
 {
-    leds.fill_solid(CRGB::Black);
-    CRGB color = CRGB::White;
+    leds->ClearTo(toRgb(CRGB::Black));
+    CRGB color = CRGB(255, 255, 255);
     if (menu->getMenuState() == Menu::MenuState::mainSelect)
     {
         switch (menu->getLongPressMode())
         {
         case 1:
-            leds[12] = color;
+            leds->SetPixelColor(12, toRgb(color));
             break;
         case 2:
-            leds(8, 11) = color;
+            leds->ClearTo(toRgb(color), 8, 11);
             break;
         case 3:
-            leds(0, 7) = color;
+            leds->ClearTo(toRgb(color), 0, 7);
             break;
         case 4:
-            leds(0, 7) = CRGB::Blue;
+            leds->ClearTo(toRgb(CRGB::Blue), 0, 7);
             break;
         }
     }
     else if (menu->getMenuState() == Menu::MenuState::brightnessSelect)
     {
-        leds(0, brightnessLevel - 1) = color;
+        leds->ClearTo(toRgb(color), 0, brightnessLevel - 1);
     }
     else if (menu->getMenuState() == Menu::MenuState::colorSelect)
     {
@@ -244,20 +271,20 @@ void TreeLight::displayMenu()
             menuTime = t;
             colors.updateColor();
         }
-        leds[12] = colors.firstColor();
+        leds->SetPixelColor(12, toRgb(colors.firstColor()));
         if (colors.isColorPalette())
         {
             uint8_t mix = (t / 64);
             for (uint8_t i = 8; i < 12; ++i)
             {
-                leds[i] = colors.getPaletteColor(mix, false);
+                leds->SetPixelColor(i, toRgb(colors.getPaletteColor(mix, false)));
                 mix += 64;
             }
         }
         else
         {
-            leds(8, 11) = colors.secondColor();
+            leds->ClearTo(toRgb(colors.secondColor()), 8, 11);
         }
-        leds[colors.getSelection()] = CRGB::White;
+        leds->SetPixelColor(colors.getSelection(), toRgb(CRGB::White));
     }
 }

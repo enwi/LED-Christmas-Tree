@@ -1,7 +1,8 @@
 #ifndef TREE_COLORS_H
 #define TREE_COLORS_H
 
-#include <FastLED.h>
+#include <NeoPixelBus.h>
+#include <FastLEDCompat.h>
 #include <stdint.h>
 
 class TreeColors
@@ -38,7 +39,7 @@ private:
 private:
     CRGB color1 = CRGB(0, 0xA0, 0xFF);
     CRGB color2 = CRGB(0, 0x40, 0xFF);
-    CRGBPalette16 currentPalette {CRGB::Black};
+    CRGBPalette16 currentPalette {CRGB(0,0,0)};
     uint8_t selection = 0;
 };
 

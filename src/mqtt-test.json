@@ -1,0 +1,30 @@
+{
+	"dev": {
+		"ids": [
+			"%s"
+		],
+		"mf": "enwi",
+		"mdl": "LED Christmas Tree",
+		"name": "LED Christmas Tree",
+		"sw": "2021.11.30"
+	},
+	"name": "LED Christmas Tree",
+	"uniq_id": "%s",
+	"~": "esp8266-christmas-tree/%s",
+	"avty_t": "~/lwt",
+	"cmd_t": "~/set",
+	"stat_t": "~/state",
+	"pl_avail": "Online",
+	"pl_not_avail": "Offline",
+	"schema": "json",
+	"brightness": true,
+	"color_mode": true,
+	"supported_color_modes": [
+		"rgb"
+	],
+	"effect": true,
+	"fx_list": [
+		"static",
+		"twinkle"
+	]
+}

@@ -1,6 +1,8 @@
 #include "Menu.h"
 
 #include <AceButton.h>
+#include <Constants.h>
+
 using namespace ace_button;
 
 bool Menu::handleButton(uint8_t eventType)
@@ -104,6 +106,7 @@ void Menu::setMainCallback(uint8_t selection, Callback* cb)
 
 void Menu::nextSubSelection()
 {
+    DEBUGLN("Next subselection");
     if (++subSelection >= numSelections)
     {
         subSelection = 0;
@@ -112,6 +115,7 @@ void Menu::nextSubSelection()
 
 void Menu::prevSubSelection()
 {
+    DEBUGLN("Prev subselection");
     if (subSelection-- == 0)
     {
         subSelection = numSelections - 1;

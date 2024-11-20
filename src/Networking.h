@@ -1,22 +1,22 @@
 #pragma once
 
 #include <ArduinoJson.h>
-#include <AsyncJson.h>
-#include <DNSServer.h>
-#include <ESPAsyncWebServer.h>
+#ifdef ESP32
+    #include <AsyncTCP.h>
+    #include <WiFi.h>
+    #include <Update.h>
+#elif defined(ESP8266)
+    #include <ESP8266WiFi.h>
+    #include <ESPAsyncTCP.h>
+    #include <Updater.h>
+    #include <include/WiFiState.h>
+#endif
+#include "ESPAsyncWebServer.h"
 
 #include "Config.h"
 #include "Constants.h"
 #include "Mqtt.h"
 #include "TreeLight.h"
-
-#if defined(ESP32)
-#include <Update.h>
-#else
-#include <ESP8266WiFi.h>
-#include <Updater.h>
-#include <include/WiFiState.h>
-#endif
 
 class Networking
 {

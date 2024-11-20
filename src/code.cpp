@@ -1,10 +1,7 @@
-#if defined(ESP8266)
-#define FASTLED_ALLOW_INTERRUPTS 0
-#endif
-
+#include <Arduino.h>
 #include <AceButton.h>
 #include <ESPAsyncWebServer.h>
-#include <FastLED.h>
+#include <NeoPixelBusLg.h>
 
 #include "Config.h"
 #include "Constants.h"
@@ -151,11 +148,12 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
 
 void setup()
 {
-    light.init(menu);
 #ifdef DEBUG_PRINT
     Serial.begin(57600);
     DEBUGLN("Debug output enabled");
 #endif
+    // Init light after serial, to reconfigure RX pin
+    light.init(menu);
 
     pinMode(buttonPin, INPUT);
     ButtonConfig* buttonConfig = button.getButtonConfig();
@@ -227,7 +225,7 @@ void loop()
             DEBUG("NULL");
         }
         DEBUG(", FPS: ");
-        DEBUGLN(FastLED.getFPS());
+        DEBUGLN(light.getFPS());
     }
 #endif
 }

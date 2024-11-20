@@ -1,6 +1,7 @@
 #include "Networking.h"
 
-#include "webui/cpp/build.html.gz.h"
+#include <AsyncJson.h>
+#include "../webui/cpp/build.html.gz.h"
 
 void Networking::initWifi()
 {
@@ -79,7 +80,7 @@ void Networking::initServer(TreeLight& light)
 void Networking::stop()
 {
     // server.end();
-    WiFi.mode(WIFI_SHUTDOWN, &savedState);
+    WiFi.mode(WIFI_OFF);
     // Save off state for reboot
     config.getNetworkConfig().wifiEnabled = false;
     config.saveConfig();
@@ -88,7 +89,7 @@ void Networking::stop()
 
 void Networking::resume()
 {
-    WiFi.mode(WIFI_RESUME, &savedState);
+    WiFi.mode(config.getNetworkConfig().apEnabled ? WIFI_AP : WIFI_STA);
     config.getNetworkConfig().wifiEnabled = true;
     config.saveConfig();
     DEBUGLN("Resuming wifi");
@@ -126,13 +127,13 @@ void Networking::getStatusJsonString(JsonObject& output)
 
     auto&& wifi_client = networking.createNestedObject("wifi_client");
     wifi_client["status"] = client_enabled ? (WiFi.isConnected() ? "connected" : "enabled") : "disabled";
-    wifi_client["ip"] = WiFi.localIP();
-    wifi_client["netmask"] = WiFi.subnetMask();
-    wifi_client["dns"] = WiFi.dnsIP();
+    wifi_client["ip"] = WiFi.localIP().toString();
+    wifi_client["netmask"] = WiFi.subnetMask().toString();
+    wifi_client["dns"] = WiFi.dnsIP().toString();
 
     auto&& wifi_ap = networking.createNestedObject("wifi_ap");
     wifi_ap["status"] = client_enabled ? "disabled" : "enabled";
-    wifi_ap["ip"] = WiFi.softAPIP();
+    wifi_ap["ip"] = WiFi.softAPIP().toString();
 }
 
 void Networking::handleOTAUpload(

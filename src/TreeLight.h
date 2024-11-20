@@ -2,11 +2,13 @@
 #define TREE_LIGHT_H
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <FastLED.h>
+#include <NeoPixelBus.h>
+#include <memory>
 
 #include "Menu.h"
 #include "TreeColors.h"
 #include "TreeEffects.h"
+#include <FastLEDCompat.h>
 
 // Config:
 // - brighness
@@ -54,30 +56,31 @@ public:
     void setSpeed(Speed s);
     uint8_t getSpeed() const { return speed; }
     void update();
-    void setLED(const uint8_t led, const CRGB color)
+    void setLED(const uint8_t led, const RgbColor& color)
     {
-        if (led > leds.size())
+        if (led > leds->PixelCount())
         {
             return;
         }
-        leds[led] = color;
-        FastLED.show();
+        leds->SetPixelColor(led, color);
+        leds->Show();
     }
     void resetEffect(bool timerOnly = true);
     void setBrightnessLevel(uint8_t level);
     uint8_t getBrightnessLevel() const { return brightnessLevel; }
 
-    void setLED(const uint8_t start, const uint8_t end, const CRGB color)
+    void setLED(const uint8_t start, const uint8_t end, const RgbColor& color)
     {
-        if (start > leds.size() || end > leds.size())
+        if (start > leds->PixelCount() || end > leds->PixelCount())
         {
             return;
         }
-        leds(start, end) = color;
-        FastLED.show();
+        leds->ClearTo(color, start, end);
+        leds->Show();
     }
     void initColorMenu();
     void setColorSelection(uint8_t index) { colors.setSelection(index); }
+    unsigned int getFPS();
 
     const TreeColors& getColors() const { return colors; }
     TreeColors& getColors() { return colors; }
@@ -96,10 +99,12 @@ private:
 
 private:
     Menu* menu;
-    CRGBArray<numLeds> leds;
-    CRGBArray<numLeds> ledBackup; // For fade over from different effect
+    std::unique_ptr<PixelBus> leds;
+    //CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;
     unsigned long lastUpdate = 0;
+    unsigned long fpsCounter = 0;
+    unsigned long lastFpsCheck = 0;
     EffectType currentEffectType = EffectType::off;
     IEffect* currentEffect = nullptr;
     IEffect** effectList;

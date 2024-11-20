@@ -1,7 +1,7 @@
 #ifndef TREE_EFFECTS_H
 #define TREE_EFFECTS_H
 
-#include <FastLED.h>
+#include <FastLEDCompat.h>
 
 // These effect types have to match the order in createEffects() in the cpp file
 enum class EffectType
@@ -32,7 +32,7 @@ public:
     virtual ~IEffect() = default;
 
     virtual void reset(bool timerOnly) {}; // timerOnly is true when effectTime was reset, false for a full effect reset
-    virtual EffectControl runEffect(class TreeLightView& lights, CRGBSet& leds, unsigned long effectTime) = 0;
+    virtual EffectControl runEffect(class TreeLightView& lights, PixelBus& leds, unsigned long effectTime) = 0;
     virtual const char* getName() const = 0;
 };
 

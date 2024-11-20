@@ -1,0 +1,25 @@
+{
+	"name": "ESP Christmas tree WebUI",
+	"version": "0.0.1",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/xxxxxxxxxxxx/xxxxxxxxxxxxxx.git"
+	},
+	"authors": [
+		{
+			"name": "Samuel",
+			"email": "tuglersamuel@gmail.com",
+			"url": "https://github.com/TheStaticTurtle"
+		}
+	],
+	"platforms": "*",
+	"export": {
+		"include": [
+			"cpp/*"
+		]
+	},
+	"build": {
+		"includeDir": "cpp",
+		"srcDir": "cpp"
+	}
+}

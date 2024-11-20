@@ -90,3 +90,6 @@ Repeat the steps of `1. Assemble lower ring` with the upper/smaller branch and r
 
 10. Congratulations you finished building the Christmas Tree :christmas_tree:. Now plug in the ESP8266 to your PC, upload the software described in the [Software Guide](https://github.com/enwi/LED-Christmas-Tree/blob/main/software.md) and enjoy :tada:
 <img src="https://github.com/enwi/LED-Christmas-Tree/blob/main/images/usb.JPG" width="300">
+
+## Update for NeoPixelBus:
+This new library uses the RX pin to drive the LEDs. To use this version of the software, you need to bridge the RX and D1 pins on the ESP8266 (using solder or a short wire).

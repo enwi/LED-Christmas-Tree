@@ -62,8 +62,7 @@ public:
         {
             return;
         }
-        leds->SetPixelColor(led, color);
-        leds->Show();
+        show();
     }
     void resetEffect(bool timerOnly = true);
     void setBrightnessLevel(uint8_t level);
@@ -81,6 +80,7 @@ public:
     void initColorMenu();
     void setColorSelection(uint8_t index) { colors.setSelection(index); }
     unsigned int getFPS();
+    void show(bool dithering=true);
 
     const TreeColors& getColors() const { return colors; }
     TreeColors& getColors() { return colors; }
@@ -100,7 +100,7 @@ private:
 private:
     Menu* menu;
     std::unique_ptr<PixelBus> leds;
-    //CRGBArray<numLeds> ledBackup; // For fade over from different effect
+    CRGBArray<numLeds> ledBackup; // For fade over from different effect
     unsigned long effectTime = 0;
     unsigned long lastUpdate = 0;
     unsigned long fpsCounter = 0;

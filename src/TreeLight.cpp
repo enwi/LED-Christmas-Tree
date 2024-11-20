@@ -23,7 +23,7 @@ void TreeLight::init(Menu& menu)
     lastUpdate = millis();
     lastFpsCheck = lastUpdate;
     fpsCounter = 0;
-    // ledBackup.fill_solid(CRGB::Black);
+    ledBackup.fill_solid(CRGB::Black);
 
     // Init random seed
 #if defined(ESP32)
@@ -117,11 +117,7 @@ void TreeLight::update()
     unsigned long t = millis();
     if (t - lastUpdate < 10)
     {
-        if (leds->CanShow())
-        {
-            fpsCounter++;
-            leds->Show();
-        }
+        show();
         return;
     }
     if (menu->isActive())
@@ -134,18 +130,17 @@ void TreeLight::update()
         runEffect();
     }
     lastUpdate = t;
-    if (leds->CanShow())
-    {
-        fpsCounter++;
-        leds->Show();
-    }
+    show();
 }
 
 void TreeLight::resetEffect(bool timerOnly)
 {
     effectTime = 0;
     // Save last effect colors
-    // ledBackup = leds;
+    for (int i = 0; i < numLeds; ++i)
+    {
+        ledBackup[i] = toCRGB(leds->GetPixelColor(i));
+    }
     if (currentEffect)
     {
         currentEffect->reset(timerOnly);
@@ -203,6 +198,15 @@ unsigned int TreeLight::getFPS()
     return res;
 }
 
+void TreeLight::show(bool dithering)
+{
+    if (leds->CanShow())
+    {
+        fpsCounter++;
+        leds->Show();
+    }
+}
+
 void TreeLight::runEffect()
 {
     const unsigned int colorDuration = 60000;
@@ -221,7 +225,7 @@ void TreeLight::runEffect()
         // Scale 0 to startFadeIn
         uint8_t fade = min((startFadeIn - effectTime) * 256 / startFadeIn, (unsigned long)255);
         fade = ease8InOutCubic(fade);
-        // leds.nblend(ledBackup, fade);
+        blendPixels(*leds, ledBackup, fade);
     }
     else if (c.allowAutoColorChange && effectTime > colorDuration)
     {

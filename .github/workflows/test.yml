@@ -16,6 +16,9 @@ jobs:
   test:
     # Based on example in platformio docs
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pio_env: [esp8266_d1_mini, esp32]
 
     # List of steps this job will run
     steps:
@@ -30,7 +33,7 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.platforio/.cache
+            ~/.platformio/.cache
           key: ${{ runner.os }}-pio
 
       - uses: actions/setup-python@v5
@@ -41,11 +44,11 @@ jobs:
 
       # Install the platform and dependencies
       - name: Build PlatformIO Project
-        run: pio run
+        run: pio run -e ${{ matrix.pio_env }}
       
       # Upload binary files as artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Firmware
-          path: .pio/build/d1_mini/firmware.bin
+          name: Firmware ${{ matrix.pio_env }}
+          path: .pio/build/${{ matrix.pio_env }}/firmware.bin

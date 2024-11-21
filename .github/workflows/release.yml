@@ -11,8 +11,6 @@ on:
 jobs:
   # Name of the job
   build:
-
-    # Platform GitHub will use to run workflow, we pick Windows for no particular reason
     runs-on: ubuntu-latest
 
     # Make sure Arduino CLI allows to install libraries with --git-url
@@ -32,7 +30,7 @@ jobs:
         with:
           path: |
             ~/.cache/pip
-            ~/.platforio/.cache
+            ~/.platformio/.cache
           key: ${{ runner.os }}-pio
 
       - uses: actions/setup-python@v5

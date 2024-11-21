@@ -1,10 +1,28 @@
 #include "TreeLight.h"
 
+#ifdef ESP32
+#include <bootloader_random.h>
+#endif
+
 #include <Constants.h>
 
 void TreeLight::init(Menu& menu)
 {
     this->menu = &menu;
+
+    // Init random seed
+#if defined(ESP32)
+    // Has to be called before using wifi, ADC or I2S, otherwise remove bootloader_random_enable
+    // FastLED may use I2S, so initialize seed before that
+    bootloader_random_enable();
+    randomSeed(esp_random());
+    bootloader_random_disable();
+#elif defined(ESP8266)
+    randomSeed(RANDOM_REG32);
+#else
+    randomSeed(analogRead(A0) * 17 + 23);
+#endif
+
     effectList = createEffects();
     currentEffect = effectList[0];
     currentEffect->reset(false);
@@ -24,15 +42,6 @@ void TreeLight::init(Menu& menu)
     lastFpsCheck = lastUpdate;
     fpsCounter = 0;
     ledBackup.fill_solid(CRGB::Black);
-
-    // Init random seed
-#if defined(ESP32)
-    randomSeed(ESP.getVcc() * analogRead(A0));
-#elif defined(ESP8266)
-    randomSeed(RANDOM_REG32);
-#else
-    randomSeed(analogRead(A0) * 17 + 23);
-#endif
 
     colors.initRandomColors();
     colors.setSelection(0);

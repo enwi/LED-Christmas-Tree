@@ -1,3 +1,6 @@
-[submodule "code/webui"]
-	path = code/webui
+[submodule "webui"]
+	path = webui
+	url = https://github.com/enwi/LED-Christmas-Tree-UI
+[submodule "LED-Christmas-Tree-UI"]
+	path = LED-Christmas-Tree-UI
 	url = https://github.com/enwi/LED-Christmas-Tree-UI

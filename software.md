@@ -42,22 +42,14 @@ python3 esptool.py --chip esp8266 --port <your port> --baud 460800 --before defa
 8. Enjoy your new Christmas Tree Features
 
 ## <a name="compiling"></a>Compiling
-Compiling the software yourself involves a custom setup of libraries and settings inside the Arduino IDE or VS Code.
+Compiling the software yourself now uses [PlatformIO](https://platformio.org) to install and manage the required libraries automatically.
 
-1. Download or Clone the [repository](https://github.com/enwi/LED-Christmas-Tree)
+1. Install PlatformIO IDE or PlatformIO Core, depending on your preference
+2. Download or Clone the [repository](https://github.com/enwi/LED-Christmas-Tree)
    1. To clone run `git clone git@github.com:enwi/LED-Christmas-Tree.git` or `git clone https://github.com/enwi/LED-Christmas-Tree.git`
    2. To update the submodule run `git submodule update --init`
-2. Make sure you have installed
-   - [Arduino IDE](https://www.arduino.cc/en/software) version `1.8.13` or newer
-   - [ESP8266 Core](https://github.com/esp8266/Arduino#contents) exactly version `2.7.4` (background https://github.com/FastLED/FastLED/issues/1322)
-   - [ArduinoJSON](https://github.com/bblanchon/ArduinoJson) version `6.18.5` or newer
-   - [FastLED](https://github.com/FastLED/FastLED) version `3.4.0` or newer
-   - [AceButton](https://github.com/bxparks/AceButton) version `1.9.1` or newer
-   - [ESPAsyncTCP](https://github.com/me-no-dev/ESPAsyncTCP) version `1.2.2` or newer
-   - [ESPAsyncWebServer](https://github.com/me-no-dev/ESPAsyncWebServer) version `1.2.3` or newer
-3. Open the project in Arduin0 IDE (or VSCode)
-4. Select Board `LOLIN(WEMOS) D1 R2 & mini`
-5. Select CPU Frequency `160 MHz` (background no flickering)
-7. Using a USB cable plug in the Christmas Tree to your PC
-8. Upload the software
-9. Enjoy your Christmas Tree
+3. Open the project in the PlatformIO IDE or your command line
+4. Using a USB cable plug in the Christmas Tree to your PC
+5. Press the upload button with the default environment (esp8266_d1_mini) or execute `pio run --target upload`
+6. The build process will install all required libraries and flash the controller
+7. Enjoy your Christmas Tree

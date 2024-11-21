@@ -111,7 +111,6 @@ private:
     const IPAddress AP_NETMASK = {255, 255, 255, 0};
     DNSServer dnsServer; // DNS server for captive portal
     AsyncWebServer server {80}; /// Webserver for OTA
-    WiFiState savedState;
     bool isInitialized = false;
     Config& config;
     Mqtt mqtt;

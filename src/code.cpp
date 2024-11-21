@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <AceButton.h>
+#include <Arduino.h>
 #include <ESPAsyncWebServer.h>
 #include <NeoPixelBusLg.h>
 
@@ -9,6 +10,11 @@
 #include "Mqtt.h"
 #include "Networking.h"
 #include "TreeLight.h"
+
+#if defined(ESP32)
+#include <esp_wifi.h>
+#endif
+
 using namespace ace_button;
 
 #if defined(ESP8266)
@@ -24,10 +30,19 @@ Config config;
 Networking networking {config};
 bool wifiEnabled = false;
 
+void getMacAddress(uint8_t (&mac)[6])
+{
+#if defined(ESP32)
+    esp_wifi_get_mac(WIFI_IF_STA, mac);
+#else
+    wifi_get_macaddr(STATION_IF, mac);
+#endif
+}
+
 void init_config()
 {
-    uint8_t mac[6];
-    wifi_get_macaddr(STATION_IF, mac);
+    uint8_t mac[6] = {};
+    getMacAddress(mac);
     sniprintf(deviceMAC, sizeof(deviceMAC), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     config.initConfig();
@@ -203,7 +218,10 @@ void loop()
     delay(1);
 
 #if defined(ESP8266) || defined(ESP32)
-    EVERY_N_SECONDS(1) { networking.update(); }
+    EVERY_N_SECONDS(1)
+    {
+        networking.update();
+    }
 #endif
 
 #ifdef DEBUG_PRINT

@@ -2,6 +2,7 @@
 #define FASTLED_ALLOW_INTERRUPTS 0
 #endif
 
+#include <Arduino.h>
 #include <AceButton.h>
 #include <ESPAsyncWebServer.h>
 #include <FastLED.h>

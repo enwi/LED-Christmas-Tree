@@ -1,6 +1,6 @@
 #include "Networking.h"
 
-#include "webui/cpp/build.html.gz.h"
+#include "../webui/cpp/build.html.gz.h"
 
 void Networking::initWifi()
 {

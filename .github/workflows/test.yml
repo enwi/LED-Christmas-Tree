@@ -14,45 +14,38 @@ on:
 jobs:
   # Name of the job
   test:
-
-    # Platform GitHub will use to run workflow, we pick Windows for no particular reason
-    runs-on: windows-latest
-
-    # Make sure Arduino CLI allows to install libraries with --git-url
-    env:
-          ARDUINO_LIBRARY_ENABLE_UNSAFE_INSTALL: true
+    # Based on example in platformio docs
+    runs-on: ubuntu-latest
 
     # List of steps this job will run
     steps:
 
       # Clone the repo using the `checkout` action
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
+      
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platforio/.cache
+          key: ${{ runner.os }}-pio
 
-      # Install and configure Arduino CLI
-      - name: Setup Arduino CLI
-        uses: arduino/setup-arduino-cli@v1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
 
       # Install the platform and dependencies
-      - name: Install platform
-        run: |
-          arduino-cli core update-index --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
-          arduino-cli core install esp8266:esp8266@2.7.4 --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
-          arduino-cli lib install ArduinoJson
-          arduino-cli lib install FastLED
-          arduino-cli lib install AceButton
-          arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncTCP.git
-          arduino-cli lib install --git-url https://github.com/me-no-dev/ESPAsyncWebServer.git
-      
-      # Compile the sketch
-      - name: Compile Sketch
-        run: |
-          arduino-cli compile --fqbn "esp8266:esp8266:d1_mini:xtal=160,vt=flash,exception=legacy,ssl=all,eesz=4M2M,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=921600" --export-binaries ./code
+      - name: Build PlatformIO Project
+        run: pio run
       
       # Upload binary files as artifacts
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          path: code/build/esp8266.esp8266.d1_mini/code.ino.bin
+          name: Firmware
+          path: .pio/build/d1_mini/firmware.bin

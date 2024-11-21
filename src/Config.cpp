@@ -1,5 +1,10 @@
 #include "Config.h"
 
+#ifdef ESP32
+// Needs to be included separately
+#include <SPIFFS.h>
+#endif
+
 constexpr int documentSizeConfig = 1024;
 constexpr int documentSizeEffect = 128;
 

@@ -212,6 +212,10 @@ void TreeLight::show(bool dithering)
     if (leds->CanShow())
     {
         fpsCounter++;
+        if(dithering)
+        {
+            leds->UpdateDither();
+        }
         leds->Show();
     }
 }

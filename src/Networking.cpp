@@ -2,7 +2,6 @@
 
 #include "../webui/cpp/build.html.gz.h"
 
-
 // ESP32 methods do not accept arduino strings
 #if defined(ESP32)
 #define ESP32_STR(s) s.c_str()
@@ -86,6 +85,12 @@ void Networking::initServer(TreeLight& light)
 
 void Networking::stop()
 {
+    // Do not check config here, in case it changed after mqtt was started
+    if (mqtt.getConnectionStatus() == Mqtt::Status::connected)
+    {
+        mqtt.disconnect();
+    }
+
     // server.end();
     WiFi.mode(WIFI_OFF);
     // Save off state for reboot
@@ -121,6 +126,11 @@ void Networking::initOrResume(TreeLight& light)
     else
     {
         resume();
+    }
+    if (isMqttEnabled())
+    {
+        mqtt.begin();
+        mqtt.connect();
     }
 }
 

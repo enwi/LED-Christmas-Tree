@@ -22,7 +22,7 @@ class Networking
 {
 public:
     ///@brief Static class has no constructor
-    Networking(Config& config) : config(config), mqtt(config) { }
+    Networking(Config& config) : config(config), mqtt(config.getMqttConfig()) { }
 
     Networking(Networking&&) = delete;
 
@@ -87,6 +87,13 @@ public:
     ///
     /// Should be called once every second
     void update();
+
+    /// @brief Update MQTT client
+    ///
+    /// Shoulde be called frequently if MQTT is enabled
+    void updateMqtt() { mqtt.update(); }
+
+    bool isMqttEnabled() const { return config.getMqttConfig().enabled; }
 
 private:
     /// @brief Callback used for captive portal webserver

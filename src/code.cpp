@@ -225,6 +225,10 @@ void loop()
         networking.update();
     }
 #endif
+    if (networking.isMqttEnabled())
+    {
+        networking.updateMqtt();
+    }
 
 #ifdef DEBUG_PRINT
     unsigned long t = millis();

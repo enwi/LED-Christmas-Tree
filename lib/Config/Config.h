@@ -6,7 +6,6 @@
 #include <FS.h>
 
 #include "Constants.h"
-#include "TreeEffects.h"
 
 struct NetworkConfig
 {
@@ -52,6 +51,22 @@ struct MqttConfig
     /// @brief Update all fields in object, if possible
     /// @returns true when any value was changed
     bool tryUpdate(const JsonObjectConst& object);
+};
+
+// These effect types have to match the order in createEffects() in the cpp file
+enum class EffectType
+{
+    off,
+    solid,
+    twoColorChange,
+    gradientHorizontal,
+    gradientVertical,
+    rainbowHorizontal,
+    rainbowVertical,
+    runningLight,
+    twinkleFox,
+    cycling,
+    maxValue // Not an effect, number of valid effects
 };
 
 struct EffectConfig

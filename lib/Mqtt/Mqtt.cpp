@@ -1,5 +1,7 @@
 #include "Mqtt.h"
 
+#include "FastLED.h"
+
 namespace
 {
     /// Format string with the autoconfig message, which is published to the configTopic

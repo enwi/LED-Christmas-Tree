@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "TreeLight.h"
+#include "Config.h"
 
 namespace
 {

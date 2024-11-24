@@ -7,6 +7,7 @@
 #include "Menu.h"
 #include "TreeColors.h"
 #include "TreeEffects.h"
+#include "Config.h"
 
 // Config:
 // - brighness

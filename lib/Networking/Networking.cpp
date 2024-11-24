@@ -1,6 +1,6 @@
 #include "Networking.h"
 
-#include "../webui/cpp/build.html.gz.h"
+#include "../../webui/cpp/build.html.gz.h"
 
 // ESP32 methods do not accept arduino strings
 #if defined(ESP32)

@@ -31,6 +31,7 @@ TreeLight light;
 Menu menu;
 Config config;
 Networking networking {config};
+Mqtt mqtt {config.getMqttConfig()};
 bool wifiEnabled = false;
 
 void getMacAddress(uint8_t (&mac)[6])
@@ -40,6 +41,30 @@ void getMacAddress(uint8_t (&mac)[6])
 #else
     wifi_get_macaddr(STATION_IF, mac);
 #endif
+}
+
+void handleMqttCommand(const Mqtt::LightCommand& command)
+{
+    if(command.stateChanged && !command.state)
+    {
+        light.setEffect(EffectType::off);
+    }
+    else if(command.stateChanged && command.state)
+    {
+        light.setEffect(EffectType::solid);
+    }
+    if(command.colorChanged)
+    {
+        light.getColors().setColors(CRGB(command.colorR, command.colorG, command.colorB), light.getColors().secondColor());
+    }
+    if(command.brightnessChanged)
+    {
+        light.setBrightnessScale(command.brightness);
+    }
+    if(command.effectChanged)
+    {
+        light.setEffect((EffectType)command.effectIndex);
+    }
 }
 
 void init_config()
@@ -54,7 +79,7 @@ void init_config()
     if (networking.shouldEnableWifiOnStartup())
     {
         DEBUGLN("Wifi enabled");
-        networking.initOrResume(light);
+        networking.initOrResume(light, mqtt);
         wifiEnabled = true;
     }
     else
@@ -66,17 +91,41 @@ void init_config()
     light.setColorSelection(effectConfig.colorSelection);
     light.setSpeed((Speed)effectConfig.speed);
     light.setEffect(effectConfig.currentEffectType);
+
+    mqtt.setStatusCallback([]() {
+        Mqtt::LightCommand res;
+        res.brightness = TreeLight::brightnessLevelTo8Bit(light.getBrightnessLevel());
+        CRGB c = light.getColors().firstColor();
+        res.colorR = c.r;
+        res.colorG = c.g;
+        res.colorB = c.b;
+        res.effectIndex = (uint8_t)light.getEffectType();
+        res.state = light.getEffectType() != EffectType::off;
+        return res;
+    });
+    mqtt.setCommandListener(handleMqttCommand);
+    if (wifiEnabled && mqtt.isEnabled())
+    {
+        mqtt.begin();
+        mqtt.connect();
+    }
 }
 void toggle_wifi()
 {
     if (!wifiEnabled)
     {
         wifiEnabled = true;
-        networking.initOrResume(light);
+        networking.initOrResume(light, mqtt);
+        mqtt.begin();
+        mqtt.connect();
     }
     else
     {
         wifiEnabled = false;
+        if (mqtt.getConnectionStatus() == Mqtt::Status::connected)
+        {
+            mqtt.disconnect();
+        }
         networking.stop();
     }
 }
@@ -141,6 +190,7 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
     case AceButton::kEventClicked:
         DEBUGLN("Button clicked");
         light.nextEffect();
+        mqtt.publishState();
         break;
     case AceButton::kEventPressed:
         DEBUGLN("Button pressed");
@@ -148,10 +198,12 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
     case AceButton::kEventReleased:
         DEBUGLN("Button released");
         light.nextEffect();
+        mqtt.publishState();
         break;
     case AceButton::kEventDoubleClicked:
         DEBUGLN("Button double clicked");
         light.nextSpeed();
+        mqtt.publishState();
         break;
     case AceButton::kEventRepeatPressed:
         DEBUGLN("Button repeat");
@@ -224,11 +276,11 @@ void loop()
     {
         networking.update();
     }
-#endif
-    if (networking.isMqttEnabled())
+    if (mqtt.isEnabled())
     {
-        networking.updateMqtt();
+        mqtt.update();
     }
+#endif
 
 #ifdef DEBUG_PRINT
     unsigned long t = millis();

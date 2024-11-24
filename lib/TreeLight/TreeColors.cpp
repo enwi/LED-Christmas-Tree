@@ -163,6 +163,12 @@ bool TreeColors::isColorPalette() const
     return getPaletteSelection(selection) != nullptr;
 }
 
+void TreeColors::setColors(const CRGB& firstColor, const CRGB& secondColor)
+{
+    color1 = firstColor;
+    color2 = secondColor;
+}
+
 CRGB TreeColors::getPaletteColor(uint8_t mix, bool doBlend) const
 {
     if (isColorPalette())

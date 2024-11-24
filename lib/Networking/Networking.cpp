@@ -48,15 +48,19 @@ void Networking::initWifi()
     isInitialized = true;
 }
 
-void Networking::initServer(TreeLight& light)
+void Networking::initServer(TreeLight& light, Mqtt& mqtt)
 {
     server.on(
         "/ota", HTTP_POST, [](AsyncWebServerRequest* request) { request->send(200); },
         [this](AsyncWebServerRequest* request, const String& filename, size_t index, uint8_t* data, size_t len,
             bool final) { handleOTAUpload(request, filename, index, data, len, final); });
 
-    server.on(
-        "/api/status", HTTP_GET, [&light, this](AsyncWebServerRequest* request) { handleStatusApi(request, &light); });
+    StatusCallback callback = [this, &light, &mqtt](JsonObject obj) {
+        mqtt.getStatusJsonString(obj);
+        light.getStatusJsonString(obj);
+    };
+    server.on("/api/status", HTTP_GET,
+        [callback, this](AsyncWebServerRequest* request) { handleStatusApi(request, callback); });
     server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest* r) { handleConfigApiGet(r); });
 
     AsyncCallbackJsonWebHandler* handlerSetLeds = new AsyncCallbackJsonWebHandler("/api/set_leds",
@@ -85,12 +89,6 @@ void Networking::initServer(TreeLight& light)
 
 void Networking::stop()
 {
-    // Do not check config here, in case it changed after mqtt was started
-    if (mqtt.getConnectionStatus() == Mqtt::Status::connected)
-    {
-        mqtt.disconnect();
-    }
-
     // server.end();
     WiFi.mode(WIFI_OFF);
     // Save off state for reboot
@@ -116,21 +114,16 @@ void Networking::resume()
     }
 }
 
-void Networking::initOrResume(TreeLight& light)
+void Networking::initOrResume(TreeLight& light, Mqtt& mqtt)
 {
     if (!isInitialized)
     {
         initWifi();
-        initServer(light);
+        initServer(light, mqtt);
     }
     else
     {
         resume();
-    }
-    if (isMqttEnabled())
-    {
-        mqtt.begin();
-        mqtt.connect();
     }
 }
 
@@ -204,9 +197,9 @@ void Networking::handleIndex(AsyncWebServerRequest* request)
     request->send(response);
 }
 
-void Networking::handleStatusApi(AsyncWebServerRequest* request, TreeLight* light)
+void Networking::handleStatusApi(AsyncWebServerRequest* request, StatusCallback callback)
 {
-    DynamicJsonDocument output(3000);
+    JsonDocument output;
 
     auto&& obj = output.to<JsonObject>();
 
@@ -214,8 +207,7 @@ void Networking::handleStatusApi(AsyncWebServerRequest* request, TreeLight* ligh
     obj["heap_free"] = ESP.getFreeHeap();
 
     getStatusJsonString(obj);
-    mqtt.getStatusJsonString(obj);
-    light->getStatusJsonString(obj);
+    callback(obj);
 
     String buffer;
     buffer.reserve(512);

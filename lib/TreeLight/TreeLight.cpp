@@ -146,35 +146,37 @@ void TreeLight::resetEffect(bool timerOnly)
 void TreeLight::setBrightnessLevel(uint8_t level)
 {
     brightnessLevel = level;
-    uint8_t scale = 0;
-    switch (level)
-    {
-    case 1:
-        scale = 16;
-        break;
-    case 2:
-        scale = 32;
-        break;
-    case 3:
-        scale = 48;
-        break;
-    case 4:
-        scale = 64;
-        break;
-    case 5:
-        scale = 96;
-        break;
-    case 6:
-        scale = 128;
-        break;
-    case 7:
-        scale = 192;
-        break;
-    case 8:
-        scale = 255;
-        break;
-    }
+    uint8_t scale = brightnessLevelTo8Bit(level);
     FastLED.setBrightness(scale);
+}
+
+void TreeLight::setBrightnessScale(uint8_t brightness)
+{
+    brightnessLevel = brightnessLevelFrom8Bit(brightness);
+    FastLED.setBrightness(brightness);
+}
+
+static uint8_t brightness_levels[] = {0, 16, 32, 48, 64, 96, 128, 192, 255};
+
+uint8_t TreeLight::brightnessLevelTo8Bit(uint8_t brightnessLevel)
+{
+    if (brightnessLevel <= std::size(brightness_levels))
+    {
+        return brightness_levels[brightnessLevel];
+    }
+    return 255;
+}
+
+uint8_t TreeLight::brightnessLevelFrom8Bit(uint8_t brightness)
+{
+    for (int i = std::size(brightness_levels) - 1; i >= 0; --i)
+    {
+        if (brightness >= brightness_levels[i])
+        {
+            return i;
+        }
+    }
+    return 0;
 }
 
 void TreeLight::initColorMenu()

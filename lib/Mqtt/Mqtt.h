@@ -5,8 +5,8 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 
-#include "Constants.h"
 #include "Config.h"
+#include "Constants.h"
 
 /// @brief Supports Home Assistant MQTT integration
 ///
@@ -34,10 +34,13 @@ public:
         uint8_t colorR = 0;
         uint8_t colorG = 0;
         uint8_t colorB = 0;
+        /// @brief Set changed flags based on the old command
+        void compareTo(const LightCommand& old);
     };
 
     using StatusListener = std::function<void(Status&)>;
     using CommandListener = std::function<void(const LightCommand&)>;
+    using StatusCallback = std::function<LightCommand()>;
 
 public:
     Mqtt(const MqttConfig& config);
@@ -66,6 +69,13 @@ public:
     void setCommandListener(CommandListener l);
 
     void getStatusJsonString(JsonObject& output);
+
+    /// @brief Register callback to retrieve current status of light
+    void setStatusCallback(StatusCallback c);
+
+    bool isEnabled() const { return mqttConfig.enabled; }
+
+    void publishState();
 private:
     /// Publish to state topic
     void publish(const String& payload, uint8_t qos = 0, bool retain = false);
@@ -73,11 +83,10 @@ private:
     void publish(const char* payload, uint8_t qos = 0, bool retain = false);
     void publish(const char* topic, const char* payload, uint8_t qos = 0, bool retain = false);
 
-
     void receiveCallback(const char* topic, const uint8_t* payload, unsigned int length);
 
     void publishAutoConfig();
-    void publishState();
+    void publishState(const LightCommand& c);
     void onConnected();
 
     /// @brief Parse mqtt message into LightCommand
@@ -99,6 +108,9 @@ private:
     PubSubClient mqtt;
     StatusListener statusListener;
     CommandListener commandListener;
+    StatusCallback statusCallback;
+    LightCommand lastStatus{};
+    unsigned long lastStatusUpdate = 0;
 
     char stateTopic[maxTopicNameLength];
     char lastWillTopic[maxTopicNameLength];

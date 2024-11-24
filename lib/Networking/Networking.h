@@ -21,17 +21,19 @@
 class Networking
 {
 public:
+    using StatusCallback = std::function<void(JsonObject)>;
+
     ///@brief Static class has no constructor
-    Networking(Config& config) : config(config), mqtt(config.getMqttConfig()) { }
+    Networking(Config& config) : config(config) { }
 
     Networking(Networking&&) = delete;
 
     void initWifi();
-    void initServer(TreeLight& light);
+    void initServer(TreeLight& light, Mqtt& mqtt);
 
     void stop();
     void resume();
-    void initOrResume(TreeLight& light);
+    void initOrResume(TreeLight& light, Mqtt& mqtt);
 
     void getStatusJsonString(JsonObject& output);
 
@@ -53,7 +55,7 @@ public:
     ///
     ///@param request  Request coming from webserver
     ///@param light TreeLight to control
-    void handleStatusApi(AsyncWebServerRequest* request, TreeLight* light);
+    void handleStatusApi(AsyncWebServerRequest* request, StatusCallback callback);
 
     ///@brief Handle the config GET api
     ///@param request Request coming from webserver
@@ -88,13 +90,6 @@ public:
     /// Should be called once every second
     void update();
 
-    /// @brief Update MQTT client
-    ///
-    /// Shoulde be called frequently if MQTT is enabled
-    void updateMqtt() { mqtt.update(); }
-
-    bool isMqttEnabled() const { return config.getMqttConfig().enabled; }
-
 private:
     /// @brief Callback used for captive portal webserver
     ///
@@ -120,6 +115,5 @@ private:
     AsyncWebServer server {80}; /// Webserver for OTA
     bool isInitialized = false;
     Config& config;
-    Mqtt mqtt;
     bool restartESP = false; /// Restart ESP after config change
 }; // namespace Networking

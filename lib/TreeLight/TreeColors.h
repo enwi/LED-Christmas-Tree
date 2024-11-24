@@ -21,6 +21,7 @@ public:
     CRGB secondColor() const { return color2; }
 
     bool isColorPalette() const;
+    void setColors(const CRGB& firstColor, const CRGB& secondColor);
 
     // Is palette: color from palette
     // Not a palette: between current first and second color

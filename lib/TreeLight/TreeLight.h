@@ -66,8 +66,11 @@ public:
     }
     void resetEffect(bool timerOnly = true);
     void setBrightnessLevel(uint8_t level);
+    void setBrightnessScale(uint8_t brightness);
     uint8_t getBrightnessLevel() const { return brightnessLevel; }
-
+    static uint8_t brightnessLevelTo8Bit(uint8_t brightnessLevel);
+    static uint8_t brightnessLevelFrom8Bit(uint8_t brightness);
+    
     void setLED(const uint8_t start, const uint8_t end, const CRGB color)
     {
         if (start > leds.size() || end > leds.size())

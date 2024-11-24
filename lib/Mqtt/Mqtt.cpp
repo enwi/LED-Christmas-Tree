@@ -2,13 +2,22 @@
 
 #include "FastLED.h"
 
+#ifndef TREE_SOFTWARE_VERSION
+#define TREE_SOFTWARE_VERSION 2021.11.30
+#endif
+
+// Macro tricks to expand s to a string literal
+#define XSTR(s) STR(s)
+#define STR(s) #s
+
 namespace
 {
     /// Format string with the autoconfig message, which is published to the configTopic
     /// Describes the properties of the device to Home Assistant
     /// It needs to be formatted using
-    ///   1. unique id (MAC) at position 1, 2 and 3
-    ///   2. list of effect names in quotes as the 4th format argument
+    ///   1. unique id (MAC) at position 1, 3 and 4
+    ///   2. ip address at position 2
+    ///   2. list of effect names in quotes as the 5th format argument
     ///
     /// Example config:
     /// {"dev":{"ids":["D4A67829"],"mf":"enwi","mdl":"LED Christmas Tree",
@@ -20,7 +29,7 @@ namespace
     ///     "pl_not_avail":"Offline","schema":"json","brightness":true,"color_mode":true,
     ///     "supported_color_modes":["rgb"],"effect":true,"fx_list":["static"]}
     const char* autoConfigFormat PROGMEM
-        = R"({"dev":{"ids":["%s"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":"2021.11.30"},"uniq_id":"light%s","~":"esp8266-christmas-tree/%s","avty_t":"~/lwt","cmd_t":"~/set","stat_t":"~/state","pl_avail":"Online","pl_not_avail":"Offline","schema":"json","brightness":true,"color_mode":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[%s]})";
+        = R"({"dev":{"ids":["%s"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(TREE_SOFTWARE_VERSION) R"(","cu":"http://%s"},"uniq_id":"light%s","~":"esp8266-christmas-tree/%s","avty_t":"~/lwt","cmd_t":"~/set","stat_t":"~/state","pl_avail":"Online","pl_not_avail":"Offline","schema":"json","brightness":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[%s]})";
     /// Base topic for all requests to the device
     /// The device id and child topics are inserted
     const char* baseTopic PROGMEM = R"(esp8266-christmas-tree/%s%s)";
@@ -43,9 +52,29 @@ Mqtt::Mqtt(const MqttConfig& config) : mqttConfig(config), mqtt(espClient) { }
 
 void Mqtt::getStatusJsonString(JsonObject& output)
 {
-    auto&& mqtt = output.createNestedObject("mqtt");
+    auto&& mqttJson = output.createNestedObject("mqtt");
 
-    mqtt["status"] = "disabled";
+    if (!mqttConfig.enabled)
+    {
+        mqttJson["status"] = "disabled";
+    }
+    else if (status == Status::connected)
+    {
+        mqttJson["status"] = "connected";
+    }
+    else if (status == Status::disconnected)
+    {
+        mqttJson["status"] = "disconnected";
+    }
+    else if (status == Status::connectionFailed)
+    {
+        mqttJson["status"] = "connectionFailed";
+    }
+}
+
+void Mqtt::setStatusCallback(StatusCallback c)
+{
+    statusCallback = c;
 }
 
 void Mqtt::receiveCallback(const char* topic, const uint8_t* payload, unsigned int length)
@@ -68,7 +97,7 @@ void Mqtt::publishAutoConfig()
     constexpr int size2 = 430;
     char topic[size2];
 
-    snprintf_P(buffer, size, autoConfigFormat, deviceMAC, deviceMAC, deviceMAC, R"("static","twinkle")");
+    snprintf_P(buffer, size, autoConfigFormat, deviceMAC, WiFi.localIP().toString(), deviceMAC, deviceMAC, R"("static","twinkle")");
     snprintf_P(topic, size2, configTopicFormat, deviceMAC);
     publish(topic, buffer, 0, true);
 }
@@ -131,10 +160,34 @@ uint8_t Mqtt::getEffectIndex(const char* name)
 
 void Mqtt::publishState()
 {
+    if (statusCallback)
+    {
+        publishState(statusCallback());
+    }
+    else
+    {
+        publish("", 0, true);
+        lastStatusUpdate = millis();
+    }
+}
+
+void Mqtt::publishState(const LightCommand& status)
+{
     String stateStr;
-    // serializeJson()
-    stateStr = "";
+    parseDocument.clear();
+    parseDocument["state"] = status.state ? "ON" : "OFF";
+    auto color = parseDocument["color"].to<JsonObject>();
+    color["r"] = status.colorR;
+    color["g"] = status.colorG;
+    color["b"] = status.colorB;
+    parseDocument["color_mode"] = "rgb";
+    parseDocument["brightness"] = status.brightness;
+    // parseDocument["effect"] = createEffectList()[status.effectIndex]; TODO: implement effect
+    serializeJson(parseDocument, stateStr);
+    DEBUGLN("Publishing state");
     publish(stateStr.c_str(), 0, true);
+    lastStatus = status;
+    lastStatusUpdate = millis();
 }
 
 void Mqtt::begin()
@@ -213,6 +266,17 @@ void Mqtt::update()
         {
             updateStatus(Status::connected);
         }
+        if (statusCallback && millis() - lastStatusUpdate > 1000)
+        {
+            // Check if status changed
+            LightCommand newStatus = statusCallback();
+            newStatus.compareTo(lastStatus);
+            if (newStatus.stateChanged || newStatus.brightnessChanged || newStatus.effectChanged
+                || newStatus.colorChanged)
+            {
+                publishState(newStatus);
+            }
+        }
     }
 }
 
@@ -259,4 +323,12 @@ void Mqtt::publish(const char* topic, const char* payload, uint8_t qos, bool ret
     {
         mqtt.publish(topic, reinterpret_cast<const uint8_t*>(payload), strlen(payload), retain);
     }
+}
+
+void Mqtt::LightCommand::compareTo(const LightCommand& old)
+{
+    stateChanged = (state != old.state);
+    brightnessChanged = (brightness != old.brightness);
+    effectChanged = (effectIndex != old.effectIndex);
+    colorChanged = (colorR != old.colorR || colorG != old.colorG || colorB != old.colorB);
 }

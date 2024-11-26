@@ -15,10 +15,10 @@ namespace
 {
     /// Format string with the autoconfig message, which is published to the configTopic
     /// Describes the properties of the device to Home Assistant
-    /// It needs to be formatted using
-    ///   1. unique id (MAC) at position 1, 3 and 4
-    ///   2. ip address at position 2
-    ///   2. list of effect names in quotes as the 5th format argument
+    /// It needs to be formatted by replacing
+    ///   1. #1 with unique id (MAC) at position
+    ///   2. #2 with ip address
+    ///   2. #3 with list of effect names in quotes
     ///
     /// Example config:
     /// {"dev":{"ids":["D4A67829"],"mf":"enwi","mdl":"LED Christmas Tree",
@@ -30,15 +30,18 @@ namespace
     ///     "pl_not_avail":"Offline","schema":"json","brightness":true,"color_mode":true,
     ///     "supported_color_modes":["rgb"],"effect":true,"fx_list":["static"]}
     const char* autoConfigFormat PROGMEM
-        = R"({"dev":{"ids":["%s"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(
-            TREE_SOFTWARE_VERSION) R"(","cu":"http://%s"},"uniq_id":"light%s","~":"esp8266-christmas-tree/%s","avty_t":"~/lwt","cmd_t":"~/set","stat_t":"~/state","pl_avail":"Online","pl_not_avail":"Offline","schema":"json","brightness":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[%s]})";
+        = R"({"dev":{"ids":["#1"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(TREE_SOFTWARE_VERSION) R"(","cu":"http://#2"},"o":{"name":"LED Christmas Tree","sw":")" XSTR(
+            TREE_SOFTWARE_VERSION) R"(","url":"https://github.com/enwi/LED-Christmas-Tree"},"avty_t":"esp8266-christmas-tree/#1/lwt","cmd_t":"esp8266-christmas-tree/#1/set","stat_t":"esp8266-christmas-tree/#1/state","pl_avail":"Online","pl_not_avail":"Offline","cmps":{ )"
+                                   R"("light":{"p":"light","name":"Light","unique_id":"light#1","schema":"json","brightness":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[#2]},)"
+                                   R"("speed":{"p":"number","name":"Effect Speed","unique_id":"speed#1","min": 0,"max":4,"value_template":"{{value_json.speed}}","command_template":"{\"speed\":{{value}}}"})"
+                                   "}}";
     /// Base topic for all requests to the device
     /// The device id and child topics are inserted
     const char* baseTopic PROGMEM = R"(esp8266-christmas-tree/%s%s)";
     /// The auto discovery message is published to this topic
     /// The device id is inserted
     const char* configTopicFormat PROGMEM
-        = R"(homeassistant/light/esp8266-christmas-tree/%s/config)"; // TODO: make prefix configurable
+        = R"(homeassistant/device/esp8266-christmas-tree/%s/config)"; // TODO: make prefix configurable
 
     /// Template for last will message
     const char* lastWillFormat PROGMEM = "Offline";
@@ -97,15 +100,12 @@ void Mqtt::publishAutoConfig()
     constexpr int size2 = 430;
     char topic[size2];
 
-    // Get buffer size
-    int size = snprintf_P(nullptr, 0, autoConfigFormat, deviceMAC, WiFi.localIP().toString().c_str(), deviceMAC,
-                   deviceMAC, createEffectList().c_str())
-        + 1;
-    std::vector<char> buffer(size, '\0');
-    snprintf_P(buffer.data(), buffer.size(), autoConfigFormat, deviceMAC, WiFi.localIP().toString().c_str(), deviceMAC,
-        deviceMAC, createEffectList().c_str());
+    String configString(FPSTR(autoConfigFormat));
+    configString.replace("#1", deviceMAC);
+    configString.replace("#2", WiFi.localIP().toString());
+    configString.replace("#3", createEffectList());
     snprintf_P(topic, size2, configTopicFormat, deviceMAC);
-    publish(topic, buffer.data(), 0, true);
+    publish(topic, configString.c_str(), 0, true);
 }
 
 void Mqtt::onConnected()
@@ -126,19 +126,19 @@ Mqtt::LightCommand Mqtt::parseMessage(JsonObjectConst doc)
 {
     LightCommand result;
     auto state = doc["state"];
-    if (state)
+    if (!state.isNull())
     {
         result.stateChanged = true;
         result.state = (state == "ON");
     }
     auto effect = doc["effect"];
-    if (effect)
+    if (!effect.isNull())
     {
         result.effectChanged = true;
         result.effectIndex = getEffectIndex(effect | "");
     }
     auto brightness = doc["brightness"];
-    if (brightness)
+    if (!brightness.isNull())
     {
         result.brightnessChanged = true;
         result.brightness = brightness;
@@ -150,6 +150,12 @@ Mqtt::LightCommand Mqtt::parseMessage(JsonObjectConst doc)
         result.colorR = color["r"];
         result.colorG = color["g"];
         result.colorB = color["b"];
+    }
+    auto speed = doc["speed"];
+    if (!speed.isNull())
+    {
+        result.speedChanged = true;
+        result.speed = speed;
     }
     return result;
 }
@@ -235,6 +241,7 @@ void Mqtt::publishState(const LightCommand& status)
     {
         parseDocument["effect"] = "";
     }
+    parseDocument["speed"] = status.speed;
     serializeJson(parseDocument, stateStr);
     DEBUGLN("Publishing state");
     publish(stateStr.c_str(), 0, true);
@@ -383,4 +390,5 @@ void Mqtt::LightCommand::compareTo(const LightCommand& old)
     brightnessChanged = (brightness != old.brightness);
     effectChanged = (effectIndex != old.effectIndex);
     colorChanged = (colorR != old.colorR || colorG != old.colorG || colorB != old.colorB);
+    speedChanged = (speed != old.speed);
 }

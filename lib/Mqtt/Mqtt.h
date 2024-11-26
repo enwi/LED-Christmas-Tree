@@ -34,6 +34,8 @@ public:
         uint8_t colorR = 0;
         uint8_t colorG = 0;
         uint8_t colorB = 0;
+        bool speedChanged = false;
+        uint8_t speed = 0;
         /// @brief Set changed flags based on the old command
         void compareTo(const LightCommand& old);
     };

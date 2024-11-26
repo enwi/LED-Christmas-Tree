@@ -45,26 +45,45 @@ void getMacAddress(uint8_t (&mac)[6])
 
 void handleMqttCommand(const Mqtt::LightCommand& command)
 {
-    if(command.stateChanged && !command.state)
+    if (command.stateChanged && !command.state)
     {
         light.setEffect(EffectType::off);
     }
-    else if(command.stateChanged && command.state)
+    else if (command.stateChanged && command.state)
     {
         light.setEffect(EffectType::solid);
     }
-    if(command.colorChanged)
+    if (command.colorChanged)
     {
-        light.getColors().setColors(CRGB(command.colorR, command.colorG, command.colorB), light.getColors().secondColor());
+        light.getColors().setColors(
+            CRGB(command.colorR, command.colorG, command.colorB), light.getColors().secondColor());
     }
-    if(command.brightnessChanged)
+    if (command.brightnessChanged)
     {
         light.setBrightnessScale(command.brightness);
     }
-    if(command.effectChanged)
+    if (command.effectChanged)
     {
         light.setEffect((EffectType)command.effectIndex);
     }
+    if(command.speedChanged)
+    {
+        light.setSpeed((Speed)command.speed);
+    }
+}
+
+Mqtt::LightCommand createMqttStatus()
+{
+    Mqtt::LightCommand res;
+    res.brightness = TreeLight::brightnessLevelTo8Bit(light.getBrightnessLevel());
+    CRGB c = light.getColors().firstColor();
+    res.colorR = c.r;
+    res.colorG = c.g;
+    res.colorB = c.b;
+    res.effectIndex = (uint8_t)light.getEffectType();
+    res.state = light.getEffectType() != EffectType::off;
+    res.speed = light.getSpeed();
+    return res;
 }
 
 void init_config()
@@ -92,17 +111,7 @@ void init_config()
     light.setSpeed((Speed)effectConfig.speed);
     light.setEffect(effectConfig.currentEffectType);
 
-    mqtt.setStatusCallback([]() {
-        Mqtt::LightCommand res;
-        res.brightness = TreeLight::brightnessLevelTo8Bit(light.getBrightnessLevel());
-        CRGB c = light.getColors().firstColor();
-        res.colorR = c.r;
-        res.colorG = c.g;
-        res.colorB = c.b;
-        res.effectIndex = (uint8_t)light.getEffectType();
-        res.state = light.getEffectType() != EffectType::off;
-        return res;
-    });
+    mqtt.setStatusCallback(createMqttStatus);
     mqtt.setCommandListener(handleMqttCommand);
     if (wifiEnabled && mqtt.isEnabled())
     {

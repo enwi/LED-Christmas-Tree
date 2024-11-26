@@ -92,8 +92,9 @@ private:
     /// @brief Parse mqtt message into LightCommand
     LightCommand parseMessage(JsonObjectConst doc);
 
-    String createEffectList() const;
+    const String& createEffectList();
     uint8_t getEffectIndex(const char* name);
+    const char* getEffectName(uint8_t index);
 
 private:
     static constexpr int maxTopicNameLength = 48;
@@ -111,6 +112,7 @@ private:
     StatusCallback statusCallback;
     LightCommand lastStatus{};
     unsigned long lastStatusUpdate = 0;
+    String effectList;
 
     char stateTopic[maxTopicNameLength];
     char lastWillTopic[maxTopicNameLength];

@@ -1,6 +1,7 @@
 #include "Mqtt.h"
 
 #include "FastLED.h"
+#include "TreeEffects.h"
 
 #ifndef TREE_SOFTWARE_VERSION
 #define TREE_SOFTWARE_VERSION 2021.11.30
@@ -29,7 +30,8 @@ namespace
     ///     "pl_not_avail":"Offline","schema":"json","brightness":true,"color_mode":true,
     ///     "supported_color_modes":["rgb"],"effect":true,"fx_list":["static"]}
     const char* autoConfigFormat PROGMEM
-        = R"({"dev":{"ids":["%s"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(TREE_SOFTWARE_VERSION) R"(","cu":"http://%s"},"uniq_id":"light%s","~":"esp8266-christmas-tree/%s","avty_t":"~/lwt","cmd_t":"~/set","stat_t":"~/state","pl_avail":"Online","pl_not_avail":"Offline","schema":"json","brightness":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[%s]})";
+        = R"({"dev":{"ids":["%s"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(
+            TREE_SOFTWARE_VERSION) R"(","cu":"http://%s"},"uniq_id":"light%s","~":"esp8266-christmas-tree/%s","avty_t":"~/lwt","cmd_t":"~/set","stat_t":"~/state","pl_avail":"Online","pl_not_avail":"Offline","schema":"json","brightness":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[%s]})";
     /// Base topic for all requests to the device
     /// The device id and child topics are inserted
     const char* baseTopic PROGMEM = R"(esp8266-christmas-tree/%s%s)";
@@ -92,14 +94,18 @@ void Mqtt::receiveCallback(const char* topic, const uint8_t* payload, unsigned i
 
 void Mqtt::publishAutoConfig()
 {
-    constexpr int size = 430;
-    char buffer[size];
     constexpr int size2 = 430;
     char topic[size2];
 
-    snprintf_P(buffer, size, autoConfigFormat, deviceMAC, WiFi.localIP().toString(), deviceMAC, deviceMAC, R"("static","twinkle")");
+    // Get buffer size
+    int size = snprintf_P(nullptr, 0, autoConfigFormat, deviceMAC, WiFi.localIP().toString().c_str(), deviceMAC,
+                   deviceMAC, createEffectList().c_str())
+        + 1;
+    std::vector<char> buffer(size, '\0');
+    snprintf_P(buffer.data(), buffer.size(), autoConfigFormat, deviceMAC, WiFi.localIP().toString().c_str(), deviceMAC,
+        deviceMAC, createEffectList().c_str());
     snprintf_P(topic, size2, configTopicFormat, deviceMAC);
-    publish(topic, buffer, 0, true);
+    publish(topic, buffer.data(), 0, true);
 }
 
 void Mqtt::onConnected()
@@ -148,14 +154,52 @@ Mqtt::LightCommand Mqtt::parseMessage(JsonObjectConst doc)
     return result;
 }
 
-String Mqtt::createEffectList() const
+const String& Mqtt::createEffectList()
 {
-    return "";
+    if (!effectList.isEmpty())
+    {
+        return effectList;
+    }
+    IEffect** begin = createEffects();
+    IEffect** end = begin + static_cast<ptrdiff_t>(EffectType::maxValue);
+    unsigned int reserveSize = 0;
+    for (IEffect** it = begin; it != end; ++it)
+    {
+        if (it - begin == (int)EffectType::off)
+        {
+            continue;
+        }
+        reserveSize += std::strlen((*it)->getName()) + 2 + int(it + 1 != end);
+    }
+    effectList.reserve(reserveSize);
+    for (IEffect** it = begin; it != end; ++it)
+    {
+        if (it - begin == (int)EffectType::off)
+        {
+            continue;
+        }
+        effectList.concat('\"');
+        effectList.concat((*it)->getName());
+        effectList.concat('\"');
+        if (it + 1 != end)
+        {
+            effectList.concat(',');
+        }
+    }
+    return effectList;
 }
 
 uint8_t Mqtt::getEffectIndex(const char* name)
 {
-    return uint8_t();
+    auto begin = createEffects();
+    auto end = begin + static_cast<std::ptrdiff_t>(EffectType::maxValue);
+    auto it = std::find_if(begin, end, [&](IEffect* effect) { return std::strcmp(effect->getName(), name) == 0; });
+    return static_cast<uint8_t>(it - begin);
+}
+
+const char* Mqtt::getEffectName(uint8_t index)
+{
+    return createEffects()[index]->getName();
 }
 
 void Mqtt::publishState()
@@ -182,7 +226,15 @@ void Mqtt::publishState(const LightCommand& status)
     color["b"] = status.colorB;
     parseDocument["color_mode"] = "rgb";
     parseDocument["brightness"] = status.brightness;
-    // parseDocument["effect"] = createEffectList()[status.effectIndex]; TODO: implement effect
+    if (status.effectIndex != static_cast<uint8_t>(EffectType::off)
+        && status.effectIndex != static_cast<uint8_t>(EffectType::solid))
+    {
+        parseDocument["effect"] = getEffectName(status.effectIndex);
+    }
+    else
+    {
+        parseDocument["effect"] = "";
+    }
     serializeJson(parseDocument, stateStr);
     DEBUGLN("Publishing state");
     publish(stateStr.c_str(), 0, true);

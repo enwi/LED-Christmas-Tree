@@ -1,6 +1,7 @@
 #include "Mqtt.h"
 
 #include "FastLED.h"
+#include "TreeColors.h"
 #include "TreeEffects.h"
 
 #ifndef TREE_SOFTWARE_VERSION
@@ -32,8 +33,9 @@ namespace
     const char* autoConfigFormat PROGMEM
         = R"({"dev":{"ids":["#1"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(TREE_SOFTWARE_VERSION) R"(","cu":"http://#2"},"o":{"name":"LED Christmas Tree","sw":")" XSTR(
             TREE_SOFTWARE_VERSION) R"(","url":"https://github.com/enwi/LED-Christmas-Tree"},"avty_t":"esp8266-christmas-tree/#1/lwt","cmd_t":"esp8266-christmas-tree/#1/set","stat_t":"esp8266-christmas-tree/#1/state","pl_avail":"Online","pl_not_avail":"Offline","cmps":{ )"
-                                   R"("light":{"p":"light","name":"Light","unique_id":"light#1","schema":"json","brightness":true,"supported_color_modes":["rgb"],"effect": true,"fx_list":[#2]},)"
-                                   R"("speed":{"p":"number","name":"Effect Speed","unique_id":"speed#1","min": 0,"max":4,"value_template":"{{value_json.speed}}","command_template":"{\"speed\":{{value}}}"})"
+                                   R"("light":{"p":"light","name":"Light","uniq_id":"light#1","schema":"json","brightness":true,"sup_clrm":["rgb"],"effect": true,"fx_list":[#3]},)"
+                                   R"("colors":{"p":"select","name":"Colors","uniq_id":"colors#1","val_tpl":"{{this.attributes.options[value_json.colors | int]}}","cmd_tpl":"{\"colors\":{{this.attributes.options.index(value)}}}","ops":[#4],"ic":"mdi:palette"},)"
+                                   R"("speed":{"p":"number","name":"Effect Speed","uniq_id":"speed#1","min": 0,"max":4,"val_tpl":"{{value_json.speed}}","cmd_tpl":"{\"speed\":{{value}}}","ic":"mdi:play-speed"})"
                                    "}}";
     /// Base topic for all requests to the device
     /// The device id and child topics are inserted
@@ -52,6 +54,64 @@ namespace
 
 constexpr int Mqtt::maxTopicNameLength;
 constexpr uint16_t Mqtt::mqttMaxMessageSize;
+
+namespace
+{
+    String createEffectList()
+    {
+        String effectList;
+        IEffect** begin = createEffects();
+        IEffect** end = begin + static_cast<ptrdiff_t>(EffectType::maxValue);
+        unsigned int reserveSize = 0;
+        for (IEffect** it = begin; it != end; ++it)
+        {
+            if (it - begin == (int)EffectType::off)
+            {
+                continue;
+            }
+            reserveSize += std::strlen((*it)->getName()) + 2 + int(it + 1 != end);
+        }
+        effectList.reserve(reserveSize);
+        for (IEffect** it = begin; it != end; ++it)
+        {
+            if (it - begin == (int)EffectType::off)
+            {
+                continue;
+            }
+            effectList.concat('\"');
+            effectList.concat((*it)->getName());
+            effectList.concat('\"');
+            if (it + 1 != end)
+            {
+                effectList.concat(',');
+            }
+        }
+        return effectList;
+    }
+    String createColorsList()
+    {
+        String colorsList;
+        uint8_t begin = 0;
+        uint8_t end = TreeColors::getSelectionCount();
+        unsigned int reserveSize = 0;
+        for (uint8_t it = begin; it != end; ++it)
+        {
+            reserveSize += std::strlen(TreeColors::getSelectionName(it));
+        }
+        colorsList.reserve(reserveSize);
+        for (uint8_t it = begin; it != end; ++it)
+        {
+            colorsList.concat('\"');
+            colorsList.concat(TreeColors::getSelectionName(it));
+            colorsList.concat('\"');
+            if (it + 1 != end)
+            {
+                colorsList.concat(',');
+            }
+        }
+        return colorsList;
+    }
+} // namespace
 
 Mqtt::Mqtt(const MqttConfig& config) : mqttConfig(config), mqtt(espClient) { }
 
@@ -104,13 +164,13 @@ void Mqtt::publishAutoConfig()
     configString.replace("#1", deviceMAC);
     configString.replace("#2", WiFi.localIP().toString());
     configString.replace("#3", createEffectList());
+    configString.replace("#4", createColorsList());
     snprintf_P(topic, size2, configTopicFormat, deviceMAC);
     publish(topic, configString.c_str(), 0, true);
 }
 
 void Mqtt::onConnected()
 {
-    DEBUGF("Publishing %s on %s\n", onlineMsg, lastWillTopic);
     // Publish connected message
     publish(lastWillTopic, onlineMsg, 2, true);
 
@@ -157,42 +217,13 @@ Mqtt::LightCommand Mqtt::parseMessage(JsonObjectConst doc)
         result.speedChanged = true;
         result.speed = speed;
     }
+    auto colors = doc["colors"];
+    if (!colors.isNull())
+    {
+        result.colorSelectionChanged = true;
+        result.colorSelection = colors;
+    }
     return result;
-}
-
-const String& Mqtt::createEffectList()
-{
-    if (!effectList.isEmpty())
-    {
-        return effectList;
-    }
-    IEffect** begin = createEffects();
-    IEffect** end = begin + static_cast<ptrdiff_t>(EffectType::maxValue);
-    unsigned int reserveSize = 0;
-    for (IEffect** it = begin; it != end; ++it)
-    {
-        if (it - begin == (int)EffectType::off)
-        {
-            continue;
-        }
-        reserveSize += std::strlen((*it)->getName()) + 2 + int(it + 1 != end);
-    }
-    effectList.reserve(reserveSize);
-    for (IEffect** it = begin; it != end; ++it)
-    {
-        if (it - begin == (int)EffectType::off)
-        {
-            continue;
-        }
-        effectList.concat('\"');
-        effectList.concat((*it)->getName());
-        effectList.concat('\"');
-        if (it + 1 != end)
-        {
-            effectList.concat(',');
-        }
-    }
-    return effectList;
 }
 
 uint8_t Mqtt::getEffectIndex(const char* name)
@@ -242,6 +273,7 @@ void Mqtt::publishState(const LightCommand& status)
         parseDocument["effect"] = "";
     }
     parseDocument["speed"] = status.speed;
+    parseDocument["colors"] = status.colorSelection;
     serializeJson(parseDocument, stateStr);
     DEBUGLN("Publishing state");
     publish(stateStr.c_str(), 0, true);
@@ -279,10 +311,6 @@ void Mqtt::connect()
 
     if (connected)
     {
-        // Publish connected message
-        snprintf_P(msgBuffer, std::size(msgBuffer), connectionMsgFormat, deviceMAC);
-        publish(msgBuffer, 2, true);
-
         updateStatus(Status::connected);
         DEBUGLN("mqtt connected");
     }
@@ -331,7 +359,7 @@ void Mqtt::update()
             LightCommand newStatus = statusCallback();
             newStatus.compareTo(lastStatus);
             if (newStatus.stateChanged || newStatus.brightnessChanged || newStatus.effectChanged
-                || newStatus.colorChanged)
+                || newStatus.colorChanged || newStatus.speedChanged || newStatus.colorSelectionChanged)
             {
                 publishState(newStatus);
             }
@@ -380,7 +408,11 @@ void Mqtt::publish(const char* topic, const char* payload, uint8_t qos, bool ret
 {
     if (mqtt.connected())
     {
-        mqtt.publish(topic, reinterpret_cast<const uint8_t*>(payload), strlen(payload), retain);
+        // DEBUGF("Publishing %s on %s\n", payload, topic);
+        if (!mqtt.publish(topic, reinterpret_cast<const uint8_t*>(payload), strlen(payload), retain))
+        {
+            DEBUGF("Failed to publish, payload size %d\n", (int)strlen(payload));
+        }
     }
 }
 
@@ -391,4 +423,5 @@ void Mqtt::LightCommand::compareTo(const LightCommand& old)
     effectChanged = (effectIndex != old.effectIndex);
     colorChanged = (colorR != old.colorR || colorG != old.colorG || colorB != old.colorB);
     speedChanged = (speed != old.speed);
+    colorSelectionChanged = (colorSelection != old.colorSelection);
 }

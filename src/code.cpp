@@ -66,9 +66,13 @@ void handleMqttCommand(const Mqtt::LightCommand& command)
     {
         light.setEffect((EffectType)command.effectIndex);
     }
-    if(command.speedChanged)
+    if (command.speedChanged)
     {
         light.setSpeed((Speed)command.speed);
+    }
+    if (command.colorSelectionChanged)
+    {
+        light.setColorSelection(command.colorSelection);
     }
 }
 
@@ -83,6 +87,7 @@ Mqtt::LightCommand createMqttStatus()
     res.effectIndex = (uint8_t)light.getEffectType();
     res.state = light.getEffectType() != EffectType::off;
     res.speed = light.getSpeed();
+    res.colorSelection = light.getColors().getSelection();
     return res;
 }
 

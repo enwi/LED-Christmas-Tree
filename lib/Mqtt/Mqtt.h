@@ -36,6 +36,8 @@ public:
         uint8_t colorB = 0;
         bool speedChanged = false;
         uint8_t speed = 0;
+        bool colorSelectionChanged = false;
+        uint8_t colorSelection = 0;
         /// @brief Set changed flags based on the old command
         void compareTo(const LightCommand& old);
     };
@@ -94,13 +96,12 @@ private:
     /// @brief Parse mqtt message into LightCommand
     LightCommand parseMessage(JsonObjectConst doc);
 
-    const String& createEffectList();
     uint8_t getEffectIndex(const char* name);
     const char* getEffectName(uint8_t index);
 
 private:
     static constexpr int maxTopicNameLength = 48;
-    static constexpr uint16_t mqttMaxMessageSize = 1024;
+    static constexpr uint16_t mqttMaxMessageSize = 2048;
 
     // Preallocate document for parsing
     DynamicJsonDocument parseDocument {1024};
@@ -114,7 +115,6 @@ private:
     StatusCallback statusCallback;
     LightCommand lastStatus{};
     unsigned long lastStatusUpdate = 0;
-    String effectList;
 
     char stateTopic[maxTopicNameLength];
     char lastWillTopic[maxTopicNameLength];

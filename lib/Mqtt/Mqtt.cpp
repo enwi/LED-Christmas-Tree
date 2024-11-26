@@ -19,7 +19,9 @@ namespace
     /// It needs to be formatted by replacing
     ///   1. #1 with unique id (MAC) at position
     ///   2. #2 with ip address
-    ///   2. #3 with list of effect names in quotes
+    ///   3. #3 with list of effect names in quotes
+    ///   4. #4 with quoted list of color names
+    ///   5. #5 with button event types
     ///
     /// Example config:
     /// {"dev":{"ids":["D4A67829"],"mf":"enwi","mdl":"LED Christmas Tree",
@@ -35,7 +37,8 @@ namespace
             TREE_SOFTWARE_VERSION) R"(","url":"https://github.com/enwi/LED-Christmas-Tree"},"avty_t":"esp8266-christmas-tree/#1/lwt","cmd_t":"esp8266-christmas-tree/#1/set","stat_t":"esp8266-christmas-tree/#1/state","pl_avail":"Online","pl_not_avail":"Offline","cmps":{ )"
                                    R"("light":{"p":"light","name":"Light","uniq_id":"light#1","schema":"json","brightness":true,"sup_clrm":["rgb"],"effect": true,"fx_list":[#3]},)"
                                    R"("colors":{"p":"select","name":"Colors","uniq_id":"colors#1","val_tpl":"{{this.attributes.options[value_json.colors | int]}}","cmd_tpl":"{\"colors\":{{this.attributes.options.index(value)}}}","ops":[#4],"ic":"mdi:palette"},)"
-                                   R"("speed":{"p":"number","name":"Effect Speed","uniq_id":"speed#1","min": 0,"max":4,"val_tpl":"{{value_json.speed}}","cmd_tpl":"{\"speed\":{{value}}}","ic":"mdi:play-speed"})"
+                                   R"("speed":{"p":"number","name":"Effect Speed","uniq_id":"speed#1","min": 0,"max":4,"val_tpl":"{{value_json.speed}}","cmd_tpl":"{\"speed\":{{value}}}","ic":"mdi:play-speed"},)"
+                                   R"("button":{"p": "event","name": "Button Events","uniq_id": "buttonsAC0BFBCF8C26","dev_cla": "button","evt_typ": [#5],"stat_t":"esp8266-christmas-tree/#1/button"})"
                                    "}}";
     /// Base topic for all requests to the device
     /// The device id and child topics are inserted
@@ -47,9 +50,10 @@ namespace
 
     /// Template for last will message
     const char* lastWillFormat PROGMEM = "Offline";
-    /// Template for connected message
-    const char* connectionMsgFormat PROGMEM = R"({"device":"%s","connected":true})";
     const char* onlineMsg = "Online";
+    const char* eventFormat PROGMEM = R"({"event_type":"%s"})";
+
+    const char* eventNames[(int)Mqtt::ButtonEvent::maxValue] = {"click", "double_click", "long_press"};
 } // namespace
 
 constexpr int Mqtt::maxTopicNameLength;
@@ -103,6 +107,30 @@ namespace
         {
             colorsList.concat('\"');
             colorsList.concat(TreeColors::getSelectionName(it));
+            colorsList.concat('\"');
+            if (it + 1 != end)
+            {
+                colorsList.concat(',');
+            }
+        }
+        return colorsList;
+    }
+    String createButtonEventList()
+    {
+
+        String colorsList;
+        const char** begin = eventNames;
+        const char** end = eventNames + std::size(eventNames);
+        unsigned int reserveSize = 0;
+        for (const char** it = begin; it != end; ++it)
+        {
+            reserveSize += std::strlen(*it);
+        }
+        colorsList.reserve(reserveSize);
+        for (const char** it = begin; it != end; ++it)
+        {
+            colorsList.concat('\"');
+            colorsList.concat(*it);
             colorsList.concat('\"');
             if (it + 1 != end)
             {
@@ -165,6 +193,7 @@ void Mqtt::publishAutoConfig()
     configString.replace("#2", WiFi.localIP().toString());
     configString.replace("#3", createEffectList());
     configString.replace("#4", createColorsList());
+    configString.replace("#5", createButtonEventList());
     snprintf_P(topic, size2, configTopicFormat, deviceMAC);
     publish(topic, configString.c_str(), 0, true);
 }
@@ -252,6 +281,17 @@ void Mqtt::publishState()
     }
 }
 
+void Mqtt::publishButtonEvent(ButtonEvent event)
+{
+    int e = static_cast<int>(event);
+    if (e < static_cast<int>(ButtonEvent::maxValue))
+    {
+        char buf[64];
+        snprintf_P(buf, 64, eventFormat, eventNames[e]);
+        publish(buttonTopic, buf);
+    }
+}
+
 void Mqtt::publishState(const LightCommand& status)
 {
     String stateStr;
@@ -287,6 +327,7 @@ void Mqtt::begin()
     snprintf_P(stateTopic, maxTopicNameLength, baseTopic, deviceMAC, "/state");
     snprintf_P(lastWillTopic, maxTopicNameLength, baseTopic, deviceMAC, "/lwt");
     snprintf_P(setTopic, maxTopicNameLength, baseTopic, deviceMAC, "/set");
+    snprintf_P(buttonTopic, maxTopicNameLength, baseTopic, deviceMAC, "/button");
     if (!mqtt.setBufferSize(mqttMaxMessageSize))
     {
         DEBUGLN("Failed to increase mqtt buffer size");

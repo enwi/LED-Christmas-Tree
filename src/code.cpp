@@ -193,6 +193,8 @@ void selectColor()
     light.initColorMenu();
 }
 
+bool isLongPress = false;
+
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
     if (menu.handleButton(eventType))
@@ -205,6 +207,7 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         DEBUGLN("Button clicked");
         light.nextEffect();
         mqtt.publishState();
+        mqtt.publishButtonEvent(Mqtt::ButtonEvent::clicked);
         break;
     case AceButton::kEventPressed:
         DEBUGLN("Button pressed");
@@ -213,17 +216,25 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         DEBUGLN("Button released");
         light.nextEffect();
         mqtt.publishState();
+        if (!isLongPress)
+        {
+            mqtt.publishButtonEvent(Mqtt::ButtonEvent::clicked);
+        }
+        isLongPress = false;
         break;
     case AceButton::kEventDoubleClicked:
         DEBUGLN("Button double clicked");
         light.nextSpeed();
         mqtt.publishState();
+        mqtt.publishButtonEvent(Mqtt::ButtonEvent::doubleClicked);
         break;
     case AceButton::kEventRepeatPressed:
         DEBUGLN("Button repeat");
         break;
     case AceButton::kEventLongPressed:
         DEBUGLN("Button longpress");
+        mqtt.publishButtonEvent(Mqtt::ButtonEvent::longPressed);
+        isLongPress = true;
         break;
     default:
         break;

@@ -22,6 +22,13 @@ public:
         disconnected,
         connectionFailed
     };
+    enum class ButtonEvent
+    {
+        clicked,
+        doubleClicked,
+        longPressed,
+        maxValue // Number of enum elements
+    };
     struct LightCommand
     {
         bool stateChanged = false;
@@ -80,6 +87,7 @@ public:
     bool isEnabled() const { return mqttConfig.enabled; }
 
     void publishState();
+    void publishButtonEvent(ButtonEvent event);
 private:
     /// Publish to state topic
     void publish(const String& payload, uint8_t qos = 0, bool retain = false);
@@ -119,4 +127,5 @@ private:
     char stateTopic[maxTopicNameLength];
     char lastWillTopic[maxTopicNameLength];
     char setTopic[maxTopicNameLength];
+    char buttonTopic[maxTopicNameLength];
 }; // namespace Mqtt

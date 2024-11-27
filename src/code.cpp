@@ -197,16 +197,23 @@ bool isLongPress = false;
 
 void handleButton(AceButton*, uint8_t eventType, uint8_t)
 {
-    if (menu.handleButton(eventType))
+    const bool override = mqtt.buttonOverrideEnabled();
+    if (!override)
     {
-        return;
+        if (menu.handleButton(eventType))
+        {
+            return;
+        }
     }
     switch (eventType)
     {
     case AceButton::kEventClicked:
         DEBUGLN("Button clicked");
-        light.nextEffect();
-        mqtt.publishState();
+        if (!override)
+        {
+            light.nextEffect();
+            mqtt.publishState();
+        }
         mqtt.publishButtonEvent(Mqtt::ButtonEvent::clicked);
         break;
     case AceButton::kEventPressed:
@@ -214,8 +221,11 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         break;
     case AceButton::kEventReleased:
         DEBUGLN("Button released");
-        light.nextEffect();
-        mqtt.publishState();
+        if (!override)
+        {
+            light.nextEffect();
+            mqtt.publishState();
+        }
         if (!isLongPress)
         {
             mqtt.publishButtonEvent(Mqtt::ButtonEvent::clicked);
@@ -224,12 +234,21 @@ void handleButton(AceButton*, uint8_t eventType, uint8_t)
         break;
     case AceButton::kEventDoubleClicked:
         DEBUGLN("Button double clicked");
-        light.nextSpeed();
-        mqtt.publishState();
+        if (!override)
+        {
+            light.nextSpeed();
+            mqtt.publishState();
+        }
         mqtt.publishButtonEvent(Mqtt::ButtonEvent::doubleClicked);
         break;
     case AceButton::kEventRepeatPressed:
         DEBUGLN("Button repeat");
+        if (!isLongPress)
+        {
+            // The default features disable long press, but repeat means it is held long enough
+            mqtt.publishButtonEvent(Mqtt::ButtonEvent::longPressed);
+            isLongPress = true;
+        }
         break;
     case AceButton::kEventLongPressed:
         DEBUGLN("Button longpress");

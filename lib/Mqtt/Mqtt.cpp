@@ -38,7 +38,8 @@ namespace
                                    R"("light":{"p":"light","name":"Light","uniq_id":"light#1","schema":"json","brightness":true,"sup_clrm":["rgb"],"effect": true,"fx_list":[#3]},)"
                                    R"("colors":{"p":"select","name":"Colors","uniq_id":"colors#1","val_tpl":"{{this.attributes.options[value_json.colors | int]}}","cmd_tpl":"{\"colors\":{{this.attributes.options.index(value)}}}","ops":[#4],"ic":"mdi:palette"},)"
                                    R"("speed":{"p":"number","name":"Effect Speed","uniq_id":"speed#1","min": 0,"max":4,"val_tpl":"{{value_json.speed}}","cmd_tpl":"{\"speed\":{{value}}}","ic":"mdi:play-speed"},)"
-                                   R"("button":{"p": "event","name": "Button Events","uniq_id": "buttonsAC0BFBCF8C26","dev_cla": "button","evt_typ": [#5],"stat_t":"esp8266-christmas-tree/#1/button"})"
+                                   R"("button":{"p":"event","name":"Button Events","uniq_id":"buttons#1","dev_cla":"button","evt_typ":[#5],"stat_t":"esp8266-christmas-tree/#1/button"},)"
+                                   R"("btn_ovr":{"p":"switch","name":"Button Override","uniq_id":"btn_ovr#1","ent_cat":"config","stat_t":"esp8266-christmas-tree/#1/btn_ovr","cmd_t":"esp8266-christmas-tree/#1/btn_ovr/set","retain":true})"
                                    "}}";
     /// Base topic for all requests to the device
     /// The device id and child topics are inserted
@@ -173,13 +174,23 @@ void Mqtt::setStatusCallback(StatusCallback c)
 void Mqtt::receiveCallback(const char* topic, const uint8_t* payload, unsigned int length)
 {
     DEBUGLN("Received message");
-    // Free memory
-    parseDocument.clear();
-    deserializeJson(parseDocument, payload);
-    Mqtt::LightCommand command = parseMessage(parseDocument.as<JsonObject>());
-    if (commandListener)
+    if (strcmp(topic, setTopic) == 0)
     {
-        commandListener(command);
+        // Free memory
+        parseDocument.clear();
+        deserializeJson(parseDocument, payload);
+        Mqtt::LightCommand command = parseMessage(parseDocument.as<JsonObject>());
+        if (commandListener)
+        {
+            commandListener(command);
+        }
+    }
+    else if (strcmp(topic, setButtonOverrideTopic) == 0)
+    {
+        buttonOverride = strncmp(reinterpret_cast<const char*>(payload), "ON", length) == 0;
+        DEBUG("Button override ");
+        DEBUGLN(buttonOverride ? "ON" : "OFF");
+        publish(buttonOverrideTopic, buttonOverride ? "ON" : "OFF");
     }
 }
 
@@ -206,6 +217,8 @@ void Mqtt::onConnected()
     // Subscribe to state topic (qos 1: at least once, 2 not supported)
     DEBUGF("Subscribing to: %s\n", setTopic);
     mqtt.subscribe(setTopic, 1);
+    // Button override is set with retain, so there is no need to save it locally
+    mqtt.subscribe(setButtonOverrideTopic, 1);
 
     publishAutoConfig();
     publishState();
@@ -279,6 +292,7 @@ void Mqtt::publishState()
         publish("", 0, true);
         lastStatusUpdate = millis();
     }
+    publish(buttonOverrideTopic, buttonOverride ? "ON" : "OFF");
 }
 
 void Mqtt::publishButtonEvent(ButtonEvent event)
@@ -290,6 +304,11 @@ void Mqtt::publishButtonEvent(ButtonEvent event)
         snprintf_P(buf, 64, eventFormat, eventNames[e]);
         publish(buttonTopic, buf);
     }
+}
+
+bool Mqtt::buttonOverrideEnabled() const
+{
+    return getConnectionStatus() == Status::connected && buttonOverride;
 }
 
 void Mqtt::publishState(const LightCommand& status)
@@ -328,6 +347,8 @@ void Mqtt::begin()
     snprintf_P(lastWillTopic, maxTopicNameLength, baseTopic, deviceMAC, "/lwt");
     snprintf_P(setTopic, maxTopicNameLength, baseTopic, deviceMAC, "/set");
     snprintf_P(buttonTopic, maxTopicNameLength, baseTopic, deviceMAC, "/button");
+    snprintf_P(buttonOverrideTopic, maxTopicNameLength, baseTopic, deviceMAC, "/btn_ovr");
+    snprintf_P(setButtonOverrideTopic, maxTopicNameLength, baseTopic, deviceMAC, "/btn_ovr/set");
     if (!mqtt.setBufferSize(mqttMaxMessageSize))
     {
         DEBUGLN("Failed to increase mqtt buffer size");

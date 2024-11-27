@@ -88,6 +88,13 @@ public:
 
     void publishState();
     void publishButtonEvent(ButtonEvent event);
+
+    /// @brief Checks if button override is enabled
+    ///
+    /// The button should no longer control the tree, instead it is only sent to mqtt for automation.
+    /// This is disabled if there is no mqtt connection. 
+    bool buttonOverrideEnabled() const;
+
 private:
     /// Publish to state topic
     void publish(const String& payload, uint8_t qos = 0, bool retain = false);
@@ -121,11 +128,14 @@ private:
     StatusListener statusListener;
     CommandListener commandListener;
     StatusCallback statusCallback;
-    LightCommand lastStatus{};
+    LightCommand lastStatus {};
     unsigned long lastStatusUpdate = 0;
+    bool buttonOverride = false;
 
     char stateTopic[maxTopicNameLength];
     char lastWillTopic[maxTopicNameLength];
     char setTopic[maxTopicNameLength];
     char buttonTopic[maxTopicNameLength];
+    char buttonOverrideTopic[maxTopicNameLength];
+    char setButtonOverrideTopic[maxTopicNameLength];
 }; // namespace Mqtt

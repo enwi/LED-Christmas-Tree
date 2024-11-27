@@ -1,6 +1,8 @@
 #ifndef FAST_LED_COMPAT_H
 #define FAST_LED_COMPAT_H
 
+#include <vector>
+
 #include <Constants.h>
 #include <FastLED.h>
 #include <NeoPixelBusLg.h>

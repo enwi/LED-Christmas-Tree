@@ -1,5 +1,8 @@
 #include "Mqtt.h"
 
+#include <cstring>
+#include <vector>
+
 #include "FastLED.h"
 #include "TreeColors.h"
 #include "TreeEffects.h"
@@ -22,16 +25,6 @@ namespace
     ///   3. #3 with list of effect names in quotes
     ///   4. #4 with quoted list of color names
     ///   5. #5 with button event types
-    ///
-    /// Example config:
-    /// {"dev":{"ids":["D4A67829"],"mf":"enwi","mdl":"LED Christmas Tree",
-    ///         "name":"LED Christmas Tree","sw":"2021.11.30"},
-    ///     "name":"LED Christmas Tree",
-    ///     "uniq_id":"lightD4A67829",
-    ///     "~":"esp8266-christmas-tree/D4A67829",
-    ///     "avty_t":"~/lwt","cmd_t":"~/set","stat_t":"~/state","pl_avail":"Online",
-    ///     "pl_not_avail":"Offline","schema":"json","brightness":true,"color_mode":true,
-    ///     "supported_color_modes":["rgb"],"effect":true,"fx_list":["static"]}
     const char* autoConfigFormat PROGMEM
         = R"({"dev":{"ids":["#1"],"mf":"enwi","mdl":"LED Christmas Tree","name":"LED Christmas Tree","sw":")" XSTR(TREE_SOFTWARE_VERSION) R"(","cu":"http://#2"},"o":{"name":"LED Christmas Tree","sw":")" XSTR(
             TREE_SOFTWARE_VERSION) R"(","url":"https://github.com/enwi/LED-Christmas-Tree"},"avty_t":"esp8266-christmas-tree/#1/lwt","cmd_t":"esp8266-christmas-tree/#1/set","stat_t":"esp8266-christmas-tree/#1/state","pl_avail":"Online","pl_not_avail":"Offline","cmps":{ )"
@@ -121,7 +114,7 @@ namespace
 
         String colorsList;
         const char** begin = eventNames;
-        const char** end = eventNames + std::size(eventNames);
+        const char** end = eventNames + (int)Mqtt::ButtonEvent::maxValue;
         unsigned int reserveSize = 0;
         for (const char** it = begin; it != end; ++it)
         {
@@ -366,7 +359,7 @@ void Mqtt::connect()
     // mqtt.setSocketTimeout(5);
 
     char msgBuffer[64];
-    snprintf_P(msgBuffer, std::size(msgBuffer), lastWillFormat, deviceMAC);
+    snprintf_P(msgBuffer, 64, lastWillFormat, deviceMAC);
     DEBUGF("%s %s\n", lastWillTopic, msgBuffer);
     const bool connected = mqtt.connect(
         mqttConfig.id.c_str(), mqttConfig.user.c_str(), mqttConfig.password.c_str(), lastWillTopic, 2, true, msgBuffer);

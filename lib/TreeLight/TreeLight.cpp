@@ -158,9 +158,18 @@ void TreeLight::setBrightnessScale(uint8_t brightness)
 
 static uint8_t brightness_levels[] = {0, 16, 32, 48, 64, 96, 128, 192, 255};
 
+namespace
+{
+    template <typename T, size_t N>
+    constexpr size_t size(const T (&arr)[N])
+    {
+        return N;
+    }
+} // namespace
+
 uint8_t TreeLight::brightnessLevelTo8Bit(uint8_t brightnessLevel)
 {
-    if (brightnessLevel <= std::size(brightness_levels))
+    if (brightnessLevel <= size(brightness_levels))
     {
         return brightness_levels[brightnessLevel];
     }
@@ -169,7 +178,7 @@ uint8_t TreeLight::brightnessLevelTo8Bit(uint8_t brightnessLevel)
 
 uint8_t TreeLight::brightnessLevelFrom8Bit(uint8_t brightness)
 {
-    for (int i = std::size(brightness_levels) - 1; i >= 0; --i)
+    for (int i = size(brightness_levels) - 1; i >= 0; --i)
     {
         if (brightness >= brightness_levels[i])
         {
